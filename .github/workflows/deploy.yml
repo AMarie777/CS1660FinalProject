@@ -22,7 +22,7 @@ jobs:
       - name: Deploy CloudFormation stack
         run: |
           aws cloudformation deploy \
-            --template-file infra/template.yaml \
+            --template-file infra/template.yml \
             --stack-name playing-the-market \
             --capabilities CAPABILITY_NAMED_IAM \
             --parameter-overrides FrontendBucketName=playing-the-market-frontend-amandacot-1234
