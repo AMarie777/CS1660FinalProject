@@ -8,8 +8,8 @@ Team:
 - Amanda Cotumaccio — Cloud Architecture & Deployment
 
 ## Project Structure
-frontend/  — Danielle’s UI code  
-backend/   — Alexa’s Lambda functions  
-ml/        — Asta’s model training + SageMaker  
-infra/     — Amanda’s CloudFormation templates  
+frontend/  - Danielle’s UI code  
+backend/   - Alexa’s Lambda functions  
+ml_lambda/        - Asta’s model training + SageMaker  
+infra/     - Amanda’s CloudFormation templates  
 .github/workflows/ — Deployment pipeline  
