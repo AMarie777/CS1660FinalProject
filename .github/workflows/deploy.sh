@@ -2,7 +2,7 @@
 set -e
 
 REGION="us-east-2"
-ACCOUNT_ID="736116164611"
+ACCOUNT_ID=""
 
 echo "===  Create DynamoDB Table ==="
 if ! aws dynamodb describe-table --table-name NVDA_Predictions --region $REGION >/dev/null 2>&1; then
