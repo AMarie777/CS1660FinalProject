@@ -252,6 +252,31 @@ Resources:
               LambdaArn: !GetAtt GetLeaderboardLambda.Arn
             }
 
+  #data route (data_lambda)
+  ApiGatewayResourceData:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
+      PathPart: data
+
+  ApiGatewayMethodDataGet:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ResourceId: !Ref ApiGatewayResourceData
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - {
+              Region: !Ref 'AWS::Region',
+              LambdaArn: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:data_lambda'
+            }
+
   LambdaPermissionForApiGateway:
     Type: AWS::Lambda::Permission
     Properties:
@@ -284,6 +309,14 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/leaderboard'
 
+  DataLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: data_lambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/data'
+
   ApiGatewayDeployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
@@ -291,6 +324,7 @@ Resources:
       - ApiGatewayMethodTodayGet
       - ApiGatewayMethodGuessPost
       - ApiGatewayMethodLeaderboardGet
+      - ApiGatewayMethodDataGet
     Properties:
       RestApiId: !Ref ApiGatewayRestApi
       StageName: prod

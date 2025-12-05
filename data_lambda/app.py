@@ -9,9 +9,113 @@ from fredapi import Fred
 from datetime import datetime, timedelta
 import boto3
 import os
+import json
 from zoneinfo import ZoneInfo  
 
 def lambda_handler(event,context):
+    try:
+        # Check if this is an API Gateway request (has httpMethod)
+        is_api_request = event.get('httpMethod') is not None
+        
+        # For API requests, return quick stock data without full processing
+        if is_api_request:
+            return get_quick_stock_data()
+        
+        # For scheduled/EventBridge calls, do full data processing
+        return process_full_data()
+    except Exception as e:
+        error_message = str(e)
+        print(f"Error in lambda_handler: {error_message}")
+        
+        # Check if this is an API Gateway request
+        is_api_request = event.get('httpMethod') is not None
+        if is_api_request:
+            return {
+                "statusCode": 500,
+                "headers": {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"
+                },
+                "body": json.dumps({
+                    "error": "Failed to process data",
+                    "message": error_message
+                })
+            }
+        else:
+            return {
+                "status": "error",
+                "error": error_message
+            }
+
+def get_quick_stock_data():
+    """Quick function to get stock data for API requests without full processing"""
+    try:
+        # Current date in US/Eastern timezone
+        today_dt = datetime.now(ZoneInfo('US/Eastern')).date()
+        today_str = today_dt.strftime('%Y-%m-%d')
+        tomorrow_dt = today_dt + timedelta(days=1)
+        tomorrow_str = tomorrow_dt.strftime('%Y-%m-%d')
+        
+        # Just fetch NVDA data for quick response
+        nvda = yf.Ticker("NVDA")
+        hist = nvda.history(start="2019-11-28", end=tomorrow_str, interval="1d")
+        
+        if hist.empty:
+            raise ValueError("No NVDA data available")
+        
+        # Get latest data
+        latest = hist.iloc[-1]
+        previous_close = float(latest['Close'])
+        latest_open = float(latest['Open'])
+        latest_high = float(latest['High'])
+        latest_low = float(latest['Low'])
+        
+        # Calculate 52-week high/low (252 trading days)
+        close_prices = hist['Close'].tail(252)
+        week52_high = float(close_prices.max())
+        week52_low = float(close_prices.min())
+        
+        # Get date
+        date_index = hist.index[-1]
+        if hasattr(date_index, 'strftime'):
+            date_str = date_index.strftime('%Y-%m-%d')
+        else:
+            date_str = today_str
+        
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            },
+            "body": json.dumps({
+                "symbol": "NVDA",
+                "previousClose": previous_close,
+                "latestOpen": latest_open,
+                "latestHigh": latest_high,
+                "latestLow": latest_low,
+                "week52High": week52_high,
+                "week52Low": week52_low,
+                "date": date_str
+            })
+        }
+    except Exception as e:
+        error_message = str(e)
+        print(f"Error in get_quick_stock_data: {error_message}")
+        return {
+            "statusCode": 500,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            },
+            "body": json.dumps({
+                "error": "Failed to fetch stock data",
+                "message": error_message
+            })
+        }
+
+def process_full_data():
+    """Full data processing for scheduled EventBridge calls"""
     # Current date in US/Eastern timezone as a datetime object
     today_dt = datetime.now(ZoneInfo('US/Eastern')).date()  
 
@@ -304,5 +408,10 @@ def lambda_handler(event,context):
 
     s3 = boto3.client('s3')
     s3.upload_file('/tmp/train19e.csv', S3_BUCKET, S3_KEY)
-    return {"status": "success"}
+    
+    # Return simple status for EventBridge/scheduled calls
+    return {
+        "status": "success",
+        "message": "Data processed and uploaded to S3"
+    }
 
