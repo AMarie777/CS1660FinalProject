@@ -322,47 +322,39 @@ Own the ML pipeline that generates NVDA predictions and writes them into DynamoD
   "Predicted_Open_NVDA": 176.5255
 }
 
-* these are needed to create api gateway for dynamodb using lambda (js):
-* arn: cannot be posted on github @alexa I will share this by text
-* region: us east 2
-* aws account id: will share by text
-
-
-
 ## Tasks
 
 ### 1. Define & document NVDA_Predictions schema
-
-* Document field names and types
-* Confirm timezone: **America/New_York**
-* Provide schema reference to Alexa
+- Document field names and types
+- Confirm timezone: **America/New_York**
+- Provide schema reference to Alexa
 
 ### 2. Generate & publish daily model output
-
-* Compute High / Low / Open predictions
-* Write to DynamoDB using `PredictionDate` as PK
+- Compute High / Low / Open predictions
+- Write to DynamoDB using `PredictionDate` as PK
 
 ### 3. Coordinate with Alexa (Backend)
-
-* Confirm field names
-* Confirm strategy for fetching latest prediction (typically scan + sort OR fixed PK)
+- Confirm field names
+- Confirm strategy for fetching latest prediction (typically scan + sort OR fixed PK)
 
 ---
 
 ## Implementation Mechanisms
-
-* Python + **boto3** DynamoDB client
-* JSON validation
-* Partition key: `PredictionDate`
+- Python + **boto3** DynamoDB client
+- JSON validation
+- Partition key: `PredictionDate`
+- Placeholder values for API Gateway / Lambda setup (do not commit real secrets):
+  - **ARN**: `<INSERT_NVDA_PREDICTIONS_TABLE_ARN_HERE>` (share privately with Alexa)
+  - **Region**: `us-east-2`
+  - **AWS Account ID**: `<INSERT_ACCOUNT_ID_HERE>` (share privately with Alexa)
 
 ---
 
 ## Deliverables
-
-* NVDA_Predictions schema documentation
-* Example prediction JSON
-* ML pipeline script/notebook
-* Feature importance metadata (if used)
+- NVDA_Predictions schema documentation
+- Example prediction JSON
+- ML pipeline script/notebook
+- Feature importance metadata (if used)
 
 ---
 
