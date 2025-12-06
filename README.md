@@ -322,10 +322,10 @@ Own the ML pipeline that generates NVDA predictions and writes them into DynamoD
   "Predicted_Open_NVDA": 176.5255
 }
 
-these are needed to create api gateway for dynamodb using lambda (js):
-arn: cannot be posted on github @alexa I will share this by text
-region: us east 2
-aws account id: will share by text
+* these are needed to create api gateway for dynamodb using lambda (js):
+* arn: cannot be posted on github @alexa I will share this by text
+* region: us east 2
+* aws account id: will share by text
 
 
 
@@ -416,7 +416,7 @@ Locked UI message:
 
 * NVDA prediction vs user guess
 * Feature importance bar chart
-* Optional: trend of user points
+* Visualization 2 — Recent NVDA Opens 
 
 ### 6. Deployment
 
