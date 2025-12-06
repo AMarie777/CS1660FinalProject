@@ -1,19 +1,21 @@
+
+
+```markdown
 # CS1660FinalProject
 Financial stock prediction quiz game built with AWS that teaches financial literacy. Users guess next-day stock prices and compete against an ML model.
 
-Team:
+**Team:**
 - Danielle Paton — Frontend
 - Alexa McKee — Backend
 - Asta Dhanaseelan — Machine Learning
 - Amanda Cotumaccio — Cloud Architecture & Deployment
 
 ## Project Structure
-frontend/  - Danielle’s UI code  
-backend/   - Alexa’s Lambda functions  
-ml_lambda/        - Asta’s model training + SageMaker  
-infra/     - Amanda’s CloudFormation templates  
-.github/workflows/ - Deployment pipeline  
-
+- `frontend/`  - Danielle’s UI code  
+- `backend/`   - Alexa’s Lambda functions  
+- `ml_lambda/` - Asta’s model training + SageMaker  
+- `infra/`     - Amanda’s CloudFormation templates  
+- `.github/workflows/` - Deployment pipeline  
 
 ---
 
@@ -22,6 +24,7 @@ infra/     - Amanda’s CloudFormation templates
 ## 🧠 Overview
 
 We are building an interactive website where users try to predict **NVIDIA’s next market opening price**.
+
 The twist:
 
 * Our ML model estimates a **High–Low range** for NVDA’s next opening price.
@@ -39,35 +42,30 @@ This README documents:
 
 ---
 
-# 🔁 **User Flow**
+# 🔁 User Flow
 
 ### 1. User Enters Prediction
-
 User types what they believe NVDA will open at tomorrow.
 
 ### 2. Prediction Locks
-
 Once submitted, user cannot change the prediction.
 
 ### 3. Reveal Model Range
-
 The website reveals:
 **“Model expects NVDA to open between X and Y.”**
 
 ### 4. Show Model Inputs
-
 To help transparency, we show:
 
 * **Top 5–8 in-page metrics (live values + importance)**
 * **Rest of data via expandable links** (Yahoo Finance, FRED, Alternative.me Fear & Greed Index, etc.)
 
 ### 5. Next Day Score
-
 At market open, system compares user prediction vs actual opening price → assigns points.
 
 ---
 
-# 📊 **Frontend Requirements**
+# 📊 Frontend Requirements
 
 ### ✔️ In-Page Display (Top Metrics)
 
@@ -82,11 +80,11 @@ These must be shown clearly on the prediction results page:
 * Low_NVDA
 * High_^GSPC
 
-### Suggested format (cards or table):
-
+#### Suggested format (cards or table):
 ```
-Metric Name          | Value Today  | Importance Score
--------------------------------------------------------
+
+## Metric Name          | Value Today  | Importance Score
+
 Close_NVDA_lag3      | 111230.773   | #1
 EMA_12_NVDA          | 24916.641    | #2
 Close_^GSPC_lag3     | 17933.752    | #3
@@ -95,7 +93,8 @@ NVDA_vs_SP500_C      | 12869.418    | #5
 NVDA_vs_SP500_C_lag3 | 11663.465    | #6
 Low_NVDA             | 10601.202    | #7
 High_^GSPC           | 10593.794    | #8
-```
+
+````
 
 ### ✔️ Weblinks Section (Expandable)
 
@@ -121,15 +120,15 @@ Show external sources the model relies on:
 * CNN Fear & Greed Index (Alternative.me API)
 
 Use collapsible UI elements:
-✓ “Show All External Data Sources”
+✓ “Show All External Data Sources”  
 ✓ “Expand Full Feature List”
 
-**User Points**
-Display how much points the user has so far, no need to display who won or who did not win, sns topic: email will do.
+**User Points**  
+Display how many points the user has so far; no need to display who won or who did not win, SNS topic: email will do.
 
 ---
 
-# 🔬 **Model Features (All Ranked Metrics)**
+# 🔬 Model Features (All Ranked Metrics)
 
 > Include this as an expandable section in the dev dashboard or documentation.
 
@@ -148,35 +147,27 @@ The model uses **hundreds of engineered features**, including:
 
 ---
 
-# 🌐 **Data Sources (Frontend Needs to Link These)**
+# 🌐 Data Sources (Frontend Needs to Link These)
 
 ### Yahoo Finance (Price & Volume Data)
-
-We collect:
-NVDA, AMD, TSM, ^GSPC, ^VIX, SOXX, SMH, ES=F
-**Link format example:**
-[https://finance.yahoo.com/quote/NVDA](https://finance.yahoo.com/quote/NVDA)
+NVDA, AMD, TSM, ^GSPC, ^VIX, SOXX, SMH, ES=F  
+**Link example:** [https://finance.yahoo.com/quote/NVDA](https://finance.yahoo.com/quote/NVDA)
 
 ### FRED – U.S. 10-Year Treasury Yield
-
-Series: **DGS10**
+Series: **DGS10**  
 [https://fred.stlouisfed.org/series/DGS10](https://fred.stlouisfed.org/series/DGS10)
 
 ### Fear & Greed Index API
-
-Endpoint:
 [https://api.alternative.me/fng/?limit=0](https://api.alternative.me/fng/?limit=0)
 
 ---
 
-# 🧩 How the Data Pipeline Works (Technical Overview)
+# 🧩 Data Pipeline (Technical Overview)
 
-Your data script:
-
-* Downloads price data from Yahoo Finance
-* Adds futures data (ES)
-* Pulls macro data (US10Y from FRED)
-* Computes technical indicators:
+* Download price data from Yahoo Finance
+* Add futures data (ES)
+* Pull macro data (US10Y from FRED)
+* Compute technical indicators:
 
   * EMAs (12, 26)
   * MACD + Signal
@@ -185,39 +176,38 @@ Your data script:
   * OBV
   * Overnight gaps
   * Volatility measures
-* Downloads sentiment (Fear & Greed Index)
-* Builds S&P500 breadth indicators (HILO Open/Close)
-* Creates relative performance ratios:
+
+* Download sentiment (Fear & Greed Index)
+* Build S&P500 breadth indicators (HILO Open/Close)
+* Create relative performance ratios:
 
   * NVDA vs SP500
   * NVDA vs TSM
   * NVDA vs AMD
   * NVDA vs SOXX
   * NVDA vs SMH
-* Creates lagged features (1–5 days)
-* Saves dataset to S3 (`train.csv`)
 
-This should be documented in `MODEL_PIPELINE.md`.
+* Create lagged features (1–5 days)
+* Save dataset to S3 (`train.csv`)
+
+Documented in `MODEL_PIPELINE.md`.
 
 ---
 
-# 🖥️ **Frontend Integration Checklist**
+# 🖥️ Frontend Integration Checklist
 
-### **Prediction Page**
-
+### Prediction Page
 * [ ] Input field for user’s predicted NVDA open
 * [ ] “Lock prediction” button
-* [ ] After lock → disable input
+* [ ] Disable input after lock
 
-### **Results Page**
-
+### Results Page
 * [ ] Model high–low range (e.g., $890 – $905)
 * [ ] Top metrics card/table (8 metrics)
 * [ ] Link list (Yahoo Finance, FRED, Fear & Greed)
-* [ ] “See full dataset features” expandable panel (paste full list)
+* [ ] Expandable panel with full dataset features
 
-### **Next Morning**
-
+### Next Morning
 * [ ] Display actual open
 * [ ] Show user score
 * [ ] Leaderboard (optional)
@@ -226,94 +216,54 @@ This should be documented in `MODEL_PIPELINE.md`.
 
 # 🚀 Deployment Notes
 
-* The model dataset is saved to S3 (`amazon-sagemaker-<your-id>/data/train.csv`)
-* Lambda or backend API should:
+* Model dataset saved to S3 (`amazon-sagemaker-<your-id>/data/train.csv`)
+* Lambda/backend API should:
 
-  * Fetch latest row
-  * Run model inference
-  * Return:
-
-    ```
-    {
-      "model_low": ...,
-      "model_high": ...,
-      "top_metrics": {...},
-      "external_links": {...}
-    }
-    ```
+```json
+{
+  "model_low": "...",
+  "model_high": "...",
+  "top_metrics": {...},
+  "external_links": {...}
+}
+````
 
 ---
 
-# 🧑‍🤝‍🧑 For Teammate(s):
+# 🧑‍🤝‍🧑 Team Technical Readme
 
-### **Frontend Dev**
+## 👥 Team Breakdown
 
-* Build the prediction UI
-* Display model range + top features
-* Add link-based exposure to raw data sources
-* Make UI clean + game-like
-
-### **Backend Dev**
-
-* Create inference endpoint
-* Store user guesses
-* Compare next-day result
-* Compute scores
-
-### **ML Dev**
-
-* Finalize model
-* Maintain feature ranking
-* Ensure transparency / reproducibility
-
----
-
-
-````markdown
-# 📘 Team Technical Readme
-
-This document outlines the full breakdown of team roles, responsibilities, tasks, implementation mechanisms, deliverables, and all shared data formats used across ML, Backend, Frontend, and Infrastructure.
-
----
-
-# 👥 Team Breakdown
-
-| Member       | Role                                      |
-|--------------|--------------------------------------------|
-| **Astalaxmi** | Machine Learning / Model Output Systems     |
-| **Danielle**  | Frontend (React + Tailwind + Cognito)       |
-| **Alexa**     | Backend (Lambda, API Gateway, DynamoDB, SNS)|
-| **Amanda**    | Integration (CloudFormation, IAM, CI/CD)    |
-
-Each teammate receives:
-- Responsibilities  
-- Tasks  
-- Implementation mechanisms  
-- Deliverables  
+| Member        | Role                                     |
+| ------------- | ---------------------------------------- |
+| **Astalaxmi** | Machine Learning / Model Output Systems  |
+| **Danielle**  | Frontend (React + Tailwind + Cognito)    |
+| **Alexa**     | Backend (Lambda, API Gateway, DynamoDB)  |
+| **Amanda**    | Integration (CloudFormation, IAM, CI/CD) |
 
 ---
 
 # 🧠 Astalaxmi — Machine Learning / Model Output Pipeline
 
 ## Responsibilities
-Own the ML pipeline that generates NVDA predictions and writes them into DynamoDB in a consistent schema required by backend + frontend.
+
+Own the ML pipeline generating NVDA predictions in DynamoDB for backend + frontend.
 
 ---
 
 ## ML Output Format (DynamoDB)
 
-### **DynamoDB Table:** `NVDA_Predictions`
+**Table:** `NVDA_Predictions`
 
-### Schema
+| Field               | Type                | Description                   |
+| ------------------- | ------------------- | ----------------------------- |
+| PredictionDate      | String (YYYY-MM-DD) | Primary Key                   |
+| Predicted_High_NVDA | Number              | Model daily high estimate     |
+| Predicted_Low_NVDA  | Number              | Model daily low estimate      |
+| Predicted_Open_NVDA | Number              | Model predicted opening price |
 
-| Field                  | Type               | Description                        |
-|------------------------|--------------------|------------------------------------|
-| PredictionDate         | String (YYYY-MM-DD)| **Primary Key**                    |
-| Predicted_High_NVDA    | Number             | Model daily high estimate          |
-| Predicted_Low_NVDA     | Number             | Model daily low estimate           |
-| Predicted_Open_NVDA    | Number             | Model predicted opening price      |
+**Example Item**
 
-### Example DynamoDB Item
 ```json
 {
   "PredictionDate": "2025-11-29",
@@ -321,40 +271,47 @@ Own the ML pipeline that generates NVDA predictions and writes them into DynamoD
   "Predicted_Low_NVDA": 169.96322631835938,
   "Predicted_Open_NVDA": 176.5255
 }
+```
+
+---
 
 ## Tasks
 
-### 1. Define & document NVDA_Predictions schema
-- Document field names and types
-- Confirm timezone: **America/New_York**
-- Provide schema reference to Alexa
+1. Define & document NVDA_Predictions schema
 
-### 2. Generate & publish daily model output
-- Compute High / Low / Open predictions
-- Write to DynamoDB using `PredictionDate` as PK
+   * Document field names and types
+   * Confirm timezone: **America/New_York**
+   * Provide schema reference to Alexa
+2. Generate & publish daily model output
 
-### 3. Coordinate with Alexa (Backend)
-- Confirm field names
-- Confirm strategy for fetching latest prediction (typically scan + sort OR fixed PK)
+   * Compute High / Low / Open predictions
+   * Write to DynamoDB using `PredictionDate` as PK
+3. Coordinate with Alexa (Backend)
+
+   * Confirm field names
+   * Confirm strategy for fetching latest prediction
 
 ---
 
 ## Implementation Mechanisms
-- Python + **boto3** DynamoDB client
-- JSON validation
-- Partition key: `PredictionDate`
-- Placeholder values for API Gateway / Lambda setup (do not commit real secrets):
-  - **ARN**: `<INSERT_NVDA_PREDICTIONS_TABLE_ARN_HERE>` (share privately with Alexa)
-  - **Region**: `us-east-2`
-  - **AWS Account ID**: `<INSERT_ACCOUNT_ID_HERE>` (share privately with Alexa)
+
+* Python + **boto3** DynamoDB client
+* JSON validation
+* Partition key: `PredictionDate`
+* Placeholder values (do not commit secrets):
+
+  * **ARN:** `<INSERT_NVDA_PREDICTIONS_TABLE_ARN_HERE>`
+  * **Region:** `us-east-2`
+  * **AWS Account ID:** `<INSERT_ACCOUNT_ID_HERE>`
 
 ---
 
 ## Deliverables
-- NVDA_Predictions schema documentation
-- Example prediction JSON
-- ML pipeline script/notebook
-- Feature importance metadata (if used)
+
+* NVDA_Predictions schema documentation
+* Example prediction JSON
+* ML pipeline script/notebook
+* Feature importance metadata (if used)
 
 ---
 
@@ -362,59 +319,35 @@ Own the ML pipeline that generates NVDA predictions and writes them into DynamoD
 
 ## Responsibilities
 
-Build the React UI with authentication, API integrations, visualizations, and guess-time enforcement.
+Build React UI with authentication, API integrations, visualizations, and guess-time enforcement.
 
 ---
 
 ## Tasks
 
-### 1. Full React UI
+1. Full React UI: Login/Signup, Dashboard, Make a Guess, Leaderboard, Daily Results
+2. Authentication:
 
-Pages:
+   * Cognito Hosted UI / JS SDK
+   * Store ID/Access tokens
+   * Send Authorization header on all API calls
+3. API Integrations:
 
-* Login / Signup (Cognito)
-* Dashboard
-* Make a Guess (locked outside allowed window)
-* Leaderboard
-* Daily Results
+   * `GET /game/range`
+   * `POST /game/guess`
+   * `GET /user/points`
+   * `GET /leaderboard`
+   * `GET /game/status`
+   * `GET /model/metadata`
+4. Time-window enforcement (5:15 PM → 7:00 AM ET)
 
-### 2. Authentication
+   * Display lockout message
+5. Required Visualizations
 
-* Cognito Hosted UI or Amazon Cognito JS SDK
-* Store ID/Access tokens
-* Send Authorization header on all API calls
-
-### 3. API Integrations
-
-Using Axios/fetch, call:
-
-* `GET /game/range`
-* `POST /game/guess`
-* `GET /user/points`
-* `GET /leaderboard`
-* `GET /game/status`
-* `GET /model/metadata`
-
-### 4. Time-window enforcement
-
-Guessing only allowed:
-**5:15 PM → 7:00 AM ET**
-
-Locked UI message:
-
-> “Guess window closed. Reopens at 5:15 PM ET.”
-
-### 5. Required Visualizations
-
-* NVDA prediction vs user guess
-* Feature importance bar chart
-* Visualization 2 — Recent NVDA Opens 
-
-### 6. Deployment
-
-* Build → S3 upload
-* Served through CloudFront
-* CloudFormation used for provisioning
+   * NVDA prediction vs user guess
+   * Feature importance bar chart
+   * Recent NVDA Opens
+6. Deployment: Build → S3, CloudFront, CloudFormation
 
 ---
 
@@ -432,112 +365,54 @@ Locked UI message:
 
 ## Responsibilities
 
-Build all backend APIs, DynamoDB business logic, scoring logic, and notification system.
-**Must use AWS SDK v3 DynamoDBClient** to access ML’s NVDA_Predictions data.
+Backend APIs, DynamoDB interactions, scoring logic, SNS notifications.
+**Must use AWS SDK v3 DynamoDBClient** for NVDA_Predictions.
 
 ---
 
 ## Tasks
 
-## A. Build API Endpoints
+### A. Build API Endpoints
 
-### DynamoDB Tables Needed
+**Tables Needed:** `NVDA_Predictions`, `Users`, `Guesses`, `Leaderboard`
 
-* `NVDA_Predictions` (ML output)
-* `Users`
-* `Guesses`
-* `Leaderboard`
-
-### Use:
+**Use:**
 
 * `@aws-sdk/client-dynamodb`
 * `@aws-sdk/lib-dynamodb` (DocumentClient)
 
----
+**Endpoints:**
 
-## Endpoints (Full List)
-
-### **1. GET /game/range**
-
-* Read the **latest** item from `NVDA_Predictions`
-* Return:
-
-  * Predicted_High_NVDA
-  * Predicted_Low_NVDA
-  * Predicted_Open_NVDA
-
-### **2. POST /game/guess**
-
-* Validate guess-time window
-* Write guess to DynamoDB
-* Return model values
-
-### **3. GET /game/status**
-
-* User guess
-* Predictions
-* Score
-* (Optional) Actual market open
-
-### **4. GET /user/points**
-
-* Sum previous scores
-
-### **5. GET /leaderboard**
-
-* Return top users
-
-### **6. GET /model/metadata**
-
-* Feature importance if provided
-
-### **7. POST /admin/compute-scores**
-
-* EventBridge scheduled @ market open
-* Compute score differences
-* Update leaderboard
-* Send SNS notifications
+1. `GET /game/range` — latest NVDA_Predictions
+2. `POST /game/guess` — validate time, store guess
+3. `GET /game/status` — user guess, predictions, score
+4. `GET /user/points`
+5. `GET /leaderboard`
+6. `GET /model/metadata`
+7. `POST /admin/compute-scores` — scheduled via EventBridge
 
 ---
 
-## B. DynamoDBClient Requirements
+### B. DynamoDBClient Requirements
 
-Backend must interact with:
-`NVDA_Predictions`, `Users`, `Guesses`, `Leaderboard`
+Backend must interact with all tables and know table ARN:
 
-Must know table ARN for IAM.
-
-### ❗ DynamoDB ARN for NVDA_Predictions:
-
-```
-<INSERT NVDA_Predictions TABLE ARN HERE>
+```text
+<INSERT NVDA_PREDICTIONS TABLE ARN HERE>
 ```
 
-Backend needs this ARN for:
-
-* Lambda execution role policies
-* Resource-based DynamoDB permissions
-* CloudFormation templates
+Used for Lambda IAM policies, permissions, CloudFormation templates.
 
 ---
 
-## C. Time-Window Enforcement
+### C. Time-Window Enforcement
 
-Guessing allowed only between:
-**5:15 PM → 7:00 AM ET**
-
-Use:
-
-* `luxon`
-* or `Intl.DateTimeFormat` (ET conversion)
-
-Return HTTP 403 if outside window.
+Guessing allowed: 5:15 PM → 7:00 AM ET
+Use `luxon` or `Intl.DateTimeFormat`. Return 403 if outside window.
 
 ---
 
-## D. SNS Notifications
-
-SNS payload format:
+### D. SNS Notifications
 
 ```json
 {
@@ -552,8 +427,8 @@ SNS payload format:
 ## Deliverables
 
 * Working Lambdas
-* API Gateway routing
-* DynamoDB read/write logic
+* API Gateway routes
+* DynamoDBClient logic
 * Scoring + SNS system
 * Documentation for Danielle
 
@@ -563,76 +438,43 @@ SNS payload format:
 
 ## Responsibilities
 
-End-to-end infrastructure provisioning, IAM, CI/CD, Cognito, S3, and scheduling.
+End-to-end infrastructure, IAM, CI/CD, Cognito, S3, scheduling.
 
 ---
 
 ## Tasks
 
-## A. CloudFormation — Infrastructure as Code
+### A. CloudFormation — Infrastructure as Code
 
-Must deploy:
+Deploy:
 
-### **Compute**
-
-* All Lambda functions (API + scoring)
-
-### **Delivery**
-
+* Lambda functions (API + scoring)
 * API Gateway
-* S3 website bucket
-* CloudFront distribution
-
-### **Authentication**
-
-* Cognito User Pool
-* Cognito Client
-
-### **Data**
-
-* DynamoDB tables:
-
-  * Users
-  * NVDA_Predictions
-  * Guesses
-  * Leaderboard
-
-### **Notifications**
-
+* S3 + CloudFront
+* Cognito (User Pool + Client)
+* DynamoDB tables: Users, NVDA_Predictions, Guesses, Leaderboard
 * SNS topic `game-results`
+* EventBridge → scoring Lambda @ 9:31 AM ET
+* IAM: Lambda roles, CloudWatch logs, API invoke
 
-### **Scheduling**
-
-* EventBridge → scoring Lambda at **9:31 AM ET**
-
-### **IAM**
-
-* Lambda execution roles (DDB read/write, SNS publish)
-* CloudWatch logs
-* API Gateway invoke permissions
-
----
-
-## B. Deployment (CI/CD)
+### B. Deployment (CI/CD)
 
 GitHub Actions:
 
 * Build & deploy React to S3
 * Deploy CloudFormation
 * Upload Lambda artifacts
-* CloudFront cache invalidation
+* CloudFront invalidation
 
----
+### C. System Integration Checklist
 
-## C. System Integration Checklist
-
-* ML pipeline writes predictions to DynamoDB
-* Backend fetches correct latest item
-* Cognito authentication works in frontend
+* ML pipeline writes predictions
+* Backend fetches latest
+* Cognito auth works
 * Guess window enforced
-* Scoring Lambda runs on schedule
+* Scoring Lambda runs
 * Notifications delivered
-* Leaderboard updates correctly
+* Leaderboard updates
 
 ---
 
@@ -642,30 +484,15 @@ GitHub Actions:
 * IAM roles/policies
 * CI/CD pipeline
 * EventBridge rules
-* Full system integration test results
+* Full system integration test reports
 
 ---
 
 # ✔️ Final Summary (Quick Roles)
 
-### **Astalaxmi (ML)**
+**Astalaxmi (ML):** Generate NVDA prediction output in NVDA_Predictions
+**Danielle (Frontend):** React UI, charts, login, API integration, time lockout
+**Alexa (Backend):** DynamoDBClient APIs, scoring, SNS, Lambda endpoints
+**Amanda (Integration):** CloudFormation, IAM, CI/CD, Cognito, S3, CloudFront, EventBridge
 
-Generate NVDA prediction output and write to `NVDA_Predictions`.
-
-### **Danielle (Frontend)**
-
-React UI, login, charts, time lockout, API integration.
-
-### **Alexa (Backend)**
-
-DynamoDBClient-based APIs, scoring logic, SNS, Lambda endpoints.
-
-### **Amanda (Integration)**
-
-CloudFormation, IAM, CI/CD, Cognito, S3, CloudFront, EventBridge.
-
----
-
-```
-```
 
