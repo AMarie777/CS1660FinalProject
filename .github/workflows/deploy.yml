@@ -26,7 +26,7 @@ jobs:
         run: |
           aws cloudformation deploy \
             --template-file infra/template.yml \
-            --stack-name playing-the-market-1 \
+            --stack-name playing-the-market-main \
             --capabilities CAPABILITY_NAMED_IAM \
             --parameter-overrides FrontendBucketName=${FRONTEND_BUCKET}
 
