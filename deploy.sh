@@ -154,7 +154,7 @@ declare -A BACKEND_LAMBDAS=(
 
 for FUNC in "${!BACKEND_LAMBDAS[@]}"; do
     HANDLER=${BACKEND_LAMBDAS[$FUNC]}
-    FUNC_DIR="backend/${FUNC}"
+    FUNC_DIR="backend/lambdas/${FUNC}"
     ZIP_FILE="/tmp/${FUNC}.zip"
 
     if [ ! -d "$FUNC_DIR" ]; then
