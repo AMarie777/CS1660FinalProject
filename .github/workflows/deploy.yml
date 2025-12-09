@@ -23,13 +23,13 @@ jobs:
         run: |
           aws cloudformation deploy \
             --template-file infra/template.yml \
-            --stack-name playing-the-market \
+            --stack-name playing-the-market-1 \
             --capabilities CAPABILITY_NAMED_IAM \
             --parameter-overrides FrontendBucketName=playing-the-market-frontend-amandacot-1234
 
       - name: Sync frontend to S3
         run: |
-          aws s3 sync frontend/ s3://playing-the-market-frontend-amandacot-1234 --delete
+          aws s3 sync frontend/ s3://playing-the-market-frontend-amandacot-1234-1 --delete
      # 3. Set up Docker Buildx (needed for multi-platform builds)
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
