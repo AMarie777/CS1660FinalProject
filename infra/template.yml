@@ -60,9 +60,8 @@ Resources:
                 Resource:
                   - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/NVDA_Predictions'
                   - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UserGuesses'
-                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UserGuesses/*'
 
-  # ---------- Backend Lambdas (placeholder code, real code comes from GitHub zip) ----------
+  # ---------- Backend Lambdas (code is updated by CI) ----------
   GetTodayGameLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -70,17 +69,15 @@ Resources:
       Runtime: nodejs20.x
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Timeout: 30
+      Timeout: 10
       Environment:
         Variables:
           PREDICTIONS_TABLE: NVDA_Predictions
           USER_GUESSES_TABLE: UserGuesses
       Code:
         ZipFile: |
-          // Placeholder - will be replaced by deployment script with actual code
           exports.handler = async () => ({
             statusCode: 200,
-            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
             body: JSON.stringify({ message: "placeholder getTodayGame" }),
           });
 
@@ -91,17 +88,15 @@ Resources:
       Runtime: nodejs20.x
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Timeout: 30
+      Timeout: 10
       Environment:
         Variables:
           PREDICTIONS_TABLE: NVDA_Predictions
           USER_GUESSES_TABLE: UserGuesses
       Code:
         ZipFile: |
-          // Placeholder - will be replaced by deployment script
           exports.handler = async () => ({
             statusCode: 200,
-            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
             body: JSON.stringify({ message: "placeholder submitUserGuess" }),
           });
 
@@ -112,17 +107,15 @@ Resources:
       Runtime: nodejs20.x
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Timeout: 30
+      Timeout: 10
       Environment:
         Variables:
           PREDICTIONS_TABLE: NVDA_Predictions
           USER_GUESSES_TABLE: UserGuesses
       Code:
         ZipFile: |
-          // Placeholder - will be replaced by deployment script
           exports.handler = async () => ({
             statusCode: 200,
-            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
             body: JSON.stringify({ message: "placeholder getLeaderboard" }),
           });
 
@@ -133,17 +126,15 @@ Resources:
       Runtime: nodejs20.x
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Timeout: 30
+      Timeout: 10
       Environment:
         Variables:
           PREDICTIONS_TABLE: NVDA_Predictions
           USER_GUESSES_TABLE: UserGuesses
       Code:
         ZipFile: |
-          // Placeholder - will be replaced by deployment script
           exports.handler = async () => ({
             statusCode: 200,
-            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
             body: JSON.stringify({ message: "placeholder getGameStatus" }),
           });
 
@@ -154,16 +145,15 @@ Resources:
       Runtime: nodejs20.x
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Timeout: 30
+      Timeout: 10
       Environment:
         Variables:
+          PREDICTIONS_TABLE: NVDA_Predictions
           USER_GUESSES_TABLE: UserGuesses
       Code:
         ZipFile: |
-          // Placeholder - will be replaced by deployment script
           exports.handler = async () => ({
             statusCode: 200,
-            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
             body: JSON.stringify({ message: "placeholder getUserPoints" }),
           });
 
@@ -174,13 +164,11 @@ Resources:
       Runtime: nodejs20.x
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Timeout: 30
+      Timeout: 10
       Code:
         ZipFile: |
-          // Placeholder - will be replaced by deployment script
           exports.handler = async () => ({
             statusCode: 200,
-            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
             body: JSON.stringify({ message: "placeholder getModelMetadata" }),
           });
 
@@ -188,9 +176,9 @@ Resources:
   ApiGatewayRestApi:
     Type: AWS::ApiGateway::RestApi
     Properties:
-      Name: playing-the-market-api
+      Name: "playing-the-market-api"
 
-  # /game resource (parent for game routes)
+  # /game/*
   ApiGatewayResourceGame:
     Type: AWS::ApiGateway::Resource
     Properties:
@@ -198,14 +186,66 @@ Resources:
       ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
       PathPart: game
 
-  # /game/range  (GET) - Maps to getTodayGame
   ApiGatewayResourceGameRange:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref ApiGatewayRestApi
-      ParentId: !GetAtt ApiGatewayResourceGame
+      ParentId: !Ref ApiGatewayResourceGame
       PathPart: range
 
+  ApiGatewayResourceGameGuess:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ParentId: !Ref ApiGatewayResourceGame
+      PathPart: guess
+
+  ApiGatewayResourceGameStatus:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ParentId: !Ref ApiGatewayResourceGame
+      PathPart: status
+
+  # /user/points
+  ApiGatewayResourceUser:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
+      PathPart: user
+
+  ApiGatewayResourceUserPoints:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ParentId: !Ref ApiGatewayResourceUser
+      PathPart: points
+
+  # /leaderboard
+  ApiGatewayResourceLeaderboard:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
+      PathPart: leaderboard
+
+  # /model/metadata
+  ApiGatewayResourceModel:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
+      PathPart: model
+
+  ApiGatewayResourceModelMetadata:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ParentId: !Ref ApiGatewayResourceModel
+      PathPart: metadata
+
+  # ---------- Methods ----------
   ApiGatewayMethodGameRangeGet:
     Type: AWS::ApiGateway::Method
     Properties:
@@ -216,25 +256,8 @@ Resources:
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub
-          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - { Region: !Ref 'AWS::Region', LambdaArn: !GetAtt GetTodayGameLambda.Arn }
-
-  LambdaPermissionGameRange:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref GetTodayGameLambda
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/game/range'
-
-  # /game/guess  (POST) - Maps to submitUserGuess
-  ApiGatewayResourceGameGuess:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApi
-      ParentId: !GetAtt ApiGatewayResourceGame
-      PathPart: guess
+        Uri: !Sub >
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetTodayGameLambda.Arn}/invocations
 
   ApiGatewayMethodGameGuessPost:
     Type: AWS::ApiGateway::Method
@@ -246,25 +269,8 @@ Resources:
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub
-          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - { Region: !Ref 'AWS::Region', LambdaArn: !GetAtt SubmitUserGuessLambda.Arn }
-
-  LambdaPermissionGameGuess:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref SubmitUserGuessLambda
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/POST/game/guess'
-
-  # /game/status  (GET) - Maps to getGameStatus
-  ApiGatewayResourceGameStatus:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApi
-      ParentId: !GetAtt ApiGatewayResourceGame
-      PathPart: status
+        Uri: !Sub >
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SubmitUserGuessLambda.Arn}/invocations
 
   ApiGatewayMethodGameStatusGet:
     Type: AWS::ApiGateway::Method
@@ -276,33 +282,8 @@ Resources:
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub
-          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - { Region: !Ref 'AWS::Region', LambdaArn: !GetAtt GetGameStatusLambda.Arn }
-
-  LambdaPermissionGameStatus:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref GetGameStatusLambda
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/game/status'
-
-  # /user resource (parent for user routes)
-  ApiGatewayResourceUser:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApi
-      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
-      PathPart: user
-
-  # /user/points  (GET) - Maps to getUserPoints
-  ApiGatewayResourceUserPoints:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApi
-      ParentId: !GetAtt ApiGatewayResourceUser
-      PathPart: points
+        Uri: !Sub >
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetGameStatusLambda.Arn}/invocations
 
   ApiGatewayMethodUserPointsGet:
     Type: AWS::ApiGateway::Method
@@ -314,63 +295,8 @@ Resources:
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub
-          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - { Region: !Ref 'AWS::Region', LambdaArn: !GetAtt GetUserPointsLambda.Arn }
-
-  LambdaPermissionUserPoints:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref GetUserPointsLambda
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/user/points'
-
-  # /model resource (parent for model routes)
-  ApiGatewayResourceModel:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApi
-      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
-      PathPart: model
-
-  # /model/metadata  (GET) - Maps to getModelMetadata
-  ApiGatewayResourceModelMetadata:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApi
-      ParentId: !GetAtt ApiGatewayResourceModel
-      PathPart: metadata
-
-  ApiGatewayMethodModelMetadataGet:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApi
-      ResourceId: !Ref ApiGatewayResourceModelMetadata
-      HttpMethod: GET
-      AuthorizationType: NONE
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub
-          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - { Region: !Ref 'AWS::Region', LambdaArn: !GetAtt GetModelMetadataLambda.Arn }
-
-  LambdaPermissionModelMetadata:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref GetModelMetadataLambda
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/model/metadata'
-
-  # /leaderboard  (GET) - Maps to getLeaderboard
-  ApiGatewayResourceLeaderboard:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApi
-      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
-      PathPart: leaderboard
+        Uri: !Sub >
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetUserPointsLambda.Arn}/invocations
 
   ApiGatewayMethodLeaderboardGet:
     Type: AWS::ApiGateway::Method
@@ -382,9 +308,54 @@ Resources:
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub
-          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - { Region: !Ref 'AWS::Region', LambdaArn: !GetAtt GetLeaderboardLambda.Arn }
+        Uri: !Sub >
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetLeaderboardLambda.Arn}/invocations
+
+  ApiGatewayMethodModelMetadataGet:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ResourceId: !Ref ApiGatewayResourceModelMetadata
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub >
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetModelMetadataLambda.Arn}/invocations
+
+  # ---------- Lambda invoke permissions ----------
+  LambdaPermissionGameRange:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetTodayGameLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/game/range'
+
+  LambdaPermissionGameGuess:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SubmitUserGuessLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/POST/game/guess'
+
+  LambdaPermissionGameStatus:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetGameStatusLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/game/status'
+
+  LambdaPermissionUserPoints:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetUserPointsLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/user/points'
 
   LambdaPermissionLeaderboard:
     Type: AWS::Lambda::Permission
@@ -394,7 +365,15 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/leaderboard'
 
-  # One deployment for all the above methods
+  LambdaPermissionModelMetadata:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetModelMetadataLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/model/metadata'
+
+  # ---------- Deployment ----------
   ApiGatewayDeployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
@@ -402,8 +381,8 @@ Resources:
       - ApiGatewayMethodGameGuessPost
       - ApiGatewayMethodGameStatusGet
       - ApiGatewayMethodUserPointsGet
-      - ApiGatewayMethodModelMetadataGet
       - ApiGatewayMethodLeaderboardGet
+      - ApiGatewayMethodModelMetadataGet
     Properties:
       RestApiId: !Ref ApiGatewayRestApi
       StageName: prod
