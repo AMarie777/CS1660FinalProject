@@ -143,6 +143,48 @@ for FUNC in "${!LAMBDAS[@]}"; do
     fi
 done
 
+echo "=== Create or Update BACKEND Lambda Functions ==="
+
+# Map: Lambda Name -> Handler
+declare -A BACKEND_LAMBDAS=(
+  ["getTodayGame"]="index.handler"
+  ["getLeaderboard"]="index.handler"
+  ["submitUserGuess"]="index.handler"
+)
+
+for FUNC in "${!BACKEND_LAMBDAS[@]}"; do
+    HANDLER=${BACKEND_LAMBDAS[$FUNC]}
+    FUNC_DIR="backend/${FUNC}"
+    ZIP_FILE="/tmp/${FUNC}.zip"
+
+    if [ ! -d "$FUNC_DIR" ]; then
+      echo " WARNING: Backend folder $FUNC_DIR does not exist — skipping $FUNC"
+      continue
+    fi
+
+    echo "Zipping backend function $FUNC..."
+    rm -f "$ZIP_FILE"
+    (cd "$FUNC_DIR" && zip -r "$ZIP_FILE" . >/dev/null)
+
+    if aws lambda get-function --function-name "$FUNC" >/dev/null 2>&1; then
+        echo "Updating existing Lambda $FUNC..."
+        aws lambda update-function-code \
+          --function-name "$FUNC" \
+          --zip-file "fileb://$ZIP_FILE"
+    else
+        echo "Creating Lambda function $FUNC..."
+        aws lambda create-function \
+          --function-name "$FUNC" \
+          --runtime nodejs20.x \
+          --handler "$HANDLER" \
+          --role arn:aws:iam::${ACCOUNT_ID}:role/ml_lambda_role \
+          --timeout 20 \
+          --memory-size 256 \
+          --zip-file "fileb://$ZIP_FILE"
+    fi
+done
+
+
 echo "===  Add EventBridge Triggers to Lambda ==="
 # ML Lambda
 aws lambda add-permission \
