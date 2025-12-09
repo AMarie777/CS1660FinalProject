@@ -150,6 +150,9 @@ declare -A BACKEND_LAMBDAS=(
   ["getTodayGame"]="index.handler"
   ["getLeaderboard"]="index.handler"
   ["submitUserGuess"]="index.handler"
+  ["getGameStatus"]="index.handler"
+  ["getUserPoints"]="index.handler"
+  ["getModelMetadata"]="index.handler"
 )
 
 for FUNC in "${!BACKEND_LAMBDAS[@]}"; do
@@ -164,7 +167,14 @@ for FUNC in "${!BACKEND_LAMBDAS[@]}"; do
 
     echo "Zipping backend function $FUNC..."
     rm -f "$ZIP_FILE"
-    (cd "$FUNC_DIR" && zip -r "$ZIP_FILE" . >/dev/null)
+    # Lambda handler expects index.js at root and db folder at same level
+    # But code uses ../../db, so we need to create proper structure
+    # Option: Copy index.js and db folder to temp, then zip
+    TEMP_DIR=$(mktemp -d)
+    cp "$FUNC_DIR/index.js" "$TEMP_DIR/"
+    cp -r backend/db "$TEMP_DIR/"
+    (cd "$TEMP_DIR" && zip -r "$ZIP_FILE" . >/dev/null 2>&1)
+    rm -rf "$TEMP_DIR"
 
     if aws lambda get-function --function-name "$FUNC" >/dev/null 2>&1; then
         echo "Updating existing Lambda $FUNC..."

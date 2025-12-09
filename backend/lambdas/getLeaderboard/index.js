@@ -1,4 +1,4 @@
-const { getGuessesForDate } = require("../../db/guessRepository");
+const { getGuessesForDate } = require("./db/guessRepository");
 
 function getGameDate(event) {
   const qs = (event && event.queryStringParameters) || {};

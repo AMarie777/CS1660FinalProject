@@ -1,7 +1,7 @@
 const {
   getPredictionForDate,
-} = require("../../db/predictionRepository");
-const { saveUserGuess } = require("../../db/guessRepository");
+} = require("./db/predictionRepository");
+const { saveUserGuess } = require("./db/guessRepository");
 
 function parseBody(event) {
   try {

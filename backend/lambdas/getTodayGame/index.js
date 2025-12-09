@@ -1,4 +1,4 @@
-const { getPredictionForDate } = require("../../db/predictionRepository");
+const { getPredictionForDate } = require("./db/predictionRepository");
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD

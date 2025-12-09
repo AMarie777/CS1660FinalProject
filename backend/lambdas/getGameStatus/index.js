@@ -1,5 +1,5 @@
-const { getPredictionForDate } = require("../../db/predictionRepository");
-const { getUserGuess, getUserAllGuesses } = require("../../db/guessRepository");
+const { getPredictionForDate } = require("./db/predictionRepository");
+const { getUserGuess, getUserAllGuesses } = require("./db/guessRepository");
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD

@@ -1,4 +1,4 @@
-const { getUserAllGuesses } = require("../../db/guessRepository");
+const { getUserAllGuesses } = require("./db/guessRepository");
 
 function getUserId(event) {
   // Extract userId from Cognito authorizer or fallback to query/header

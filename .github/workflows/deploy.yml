@@ -29,37 +29,32 @@ jobs:
             --stack-name playing-the-market-main \
             --capabilities CAPABILITY_NAMED_IAM \
             --parameter-overrides FrontendBucketName=${FRONTEND_BUCKET}
+      
+      - name: Get API Gateway URL
+        id: get-api-url
+        run: |
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name playing-the-market-main \
+            --query 'Stacks[0].Outputs[?OutputKey==`ApiBaseUrl`].OutputValue' \
+            --output text)
+          echo "API_URL=$API_URL" >> $GITHUB_OUTPUT
+          echo "API Gateway URL: $API_URL"
       - name: Deploy backend Lambdas
         run: |
           set -e
           REGION=us-east-2
 
-          # getTodayGame
-          cd backend
-          zip -r ../backend-getTodayGame.zip lambdas/getTodayGame db
-          cd ..
-          aws lambda update-function-code \
-            --function-name getTodayGame \
-            --zip-file fileb://backend-getTodayGame.zip \
-            --region $REGION
-
-          # submitUserGuess
-          cd backend
-          zip -r ../backend-submitUserGuess.zip lambdas/submitUserGuess db
-          cd ..
-          aws lambda update-function-code \
-            --function-name submitUserGuess \
-            --zip-file fileb://backend-submitUserGuess.zip \
-            --region $REGION
-
-          # getLeaderboard
-          cd backend
-          zip -r ../backend-getLeaderboard.zip lambdas/getLeaderboard db
-          cd ..
-          aws lambda update-function-code \
-            --function-name getLeaderboard \
-            --zip-file fileb://backend-getLeaderboard.zip \
-            --region $REGION
+          # Deploy all backend Lambda functions
+          for FUNC in getTodayGame submitUserGuess getLeaderboard getGameStatus getUserPoints getModelMetadata; do
+            echo "Deploying $FUNC..."
+            cd backend
+            zip -r ../backend-${FUNC}.zip lambdas/${FUNC} db
+            cd ..
+            aws lambda update-function-code \
+              --function-name $FUNC \
+              --zip-file fileb://backend-${FUNC}.zip \
+              --region $REGION || echo "Function $FUNC may not exist yet, will be created by CloudFormation"
+          done
 
       - name: Sync frontend to S3
         run: |
