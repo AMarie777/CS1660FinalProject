@@ -67,7 +67,7 @@ Resources:
     Properties:
       FunctionName: getTodayGame
       Runtime: nodejs20.x
-      Handler: index.handler
+      Handler: lambdas/getTodayGame/index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Timeout: 10
       Environment:
@@ -86,7 +86,7 @@ Resources:
     Properties:
       FunctionName: submitUserGuess
       Runtime: nodejs20.x
-      Handler: index.handler
+      Handler: lambdas/submitUserGuess/index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Timeout: 10
       Environment:
@@ -105,7 +105,7 @@ Resources:
     Properties:
       FunctionName: getLeaderboard
       Runtime: nodejs20.x
-      Handler: index.handler
+      Handler: lambdas/getLeaderboard/index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Timeout: 10
       Environment:
@@ -124,7 +124,7 @@ Resources:
     Properties:
       FunctionName: getGameStatus
       Runtime: nodejs20.x
-      Handler: index.handler
+      Handler: lambdas/getGameStatus/index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Timeout: 10
       Environment:
@@ -143,7 +143,7 @@ Resources:
     Properties:
       FunctionName: getUserPoints
       Runtime: nodejs20.x
-      Handler: index.handler
+      Handler: lambdas/getUserPoints/index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Timeout: 10
       Environment:
@@ -162,9 +162,13 @@ Resources:
     Properties:
       FunctionName: getModelMetadata
       Runtime: nodejs20.x
-      Handler: index.handler
+      Handler: lambdas/getModelMetadata/index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Timeout: 10
+      Environment:
+        Variables:
+          PREDICTIONS_TABLE: NVDA_Predictions
+          USER_GUESSES_TABLE: UserGuesses
       Code:
         ZipFile: |
           exports.handler = async () => ({
