@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Simple starter stack for Playing the Market
+Description: Playing the Market stack (frontend + backend API)
 
 Parameters:
   FrontendBucketName:
@@ -7,9 +7,11 @@ Parameters:
     Description: Globally unique S3 bucket name for frontend hosting
 
 Resources:
+  # ---------- Frontend S3 website ----------
   FrontendBucket:
     Type: AWS::S3::Bucket
     Properties:
+      BucketName: !Ref FrontendBucketName
       WebsiteConfiguration:
         IndexDocument: index.html
       PublicAccessBlockConfiguration:
@@ -30,6 +32,7 @@ Resources:
             Action: s3:GetObject
             Resource: !Sub '${FrontendBucket.Arn}/*'
 
+  # ---------- Lambda role (logs + DynamoDB) ----------
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -42,41 +45,98 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: LambdaDynamoAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                Resource:
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/NVDA_Predictions'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UserGuesses'
 
-  HelloLambda:
+  # ---------- Backend Lambdas (placeholder code, real code comes from GitHub zip) ----------
+  GetTodayGameLambda:
     Type: AWS::Lambda::Function
     Properties:
+      FunctionName: getTodayGame
       Runtime: nodejs20.x
-      Handler: index.handler
+      Handler: lambdas/getTodayGame/index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Timeout: 10
+      Environment:
+        Variables:
+          PREDICTIONS_TABLE: NVDA_Predictions
+          USER_GUESSES_TABLE: UserGuesses
       Code:
         ZipFile: |
-          exports.handler = async (event) => {
-            return {
-              statusCode: 200,
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ message: "Hello from Playing the Market!" })
-            };
-          };
+          exports.handler = async () => ({
+            statusCode: 200,
+            body: JSON.stringify({ message: "placeholder getTodayGame" }),
+          });
 
+  SubmitUserGuessLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: submitUserGuess
+      Runtime: nodejs20.x
+      Handler: lambdas/submitUserGuess/index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 10
+      Environment:
+        Variables:
+          PREDICTIONS_TABLE: NVDA_Predictions
+          USER_GUESSES_TABLE: UserGuesses
+      Code:
+        ZipFile: |
+          exports.handler = async () => ({
+            statusCode: 200,
+            body: JSON.stringify({ message: "placeholder submitUserGuess" }),
+          });
+
+  GetLeaderboardLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: getLeaderboard
+      Runtime: nodejs20.x
+      Handler: lambdas/getLeaderboard/index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 10
+      Environment:
+        Variables:
+          PREDICTIONS_TABLE: NVDA_Predictions
+          USER_GUESSES_TABLE: UserGuesses
+      Code:
+        ZipFile: |
+          exports.handler = async () => ({
+            statusCode: 200,
+            body: JSON.stringify({ message: "placeholder getLeaderboard" }),
+          });
+
+  # ---------- API Gateway ----------
   ApiGatewayRestApi:
     Type: AWS::ApiGateway::RestApi
     Properties:
       Name: playing-the-market-api
 
-  ApiGatewayResourceHello:
+  # /today-game  (GET)
+  ApiGatewayResourceTodayGame:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref ApiGatewayRestApi
       ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
-      PathPart: hello
+      PathPart: today-game
 
-  ApiGatewayMethodHelloGet:
+  ApiGatewayMethodTodayGameGet:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref ApiGatewayRestApi
-      ResourceId: !Ref ApiGatewayResourceHello
+      ResourceId: !Ref ApiGatewayResourceTodayGame
       HttpMethod: GET
       AuthorizationType: NONE
       Integration:
@@ -84,23 +144,83 @@ Resources:
         IntegrationHttpMethod: POST
         Uri: !Sub
           - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - {
-              Region: !Ref 'AWS::Region',
-              LambdaArn: !GetAtt HelloLambda.Arn
-            }
+          - { Region: !Ref 'AWS::Region', LambdaArn: !GetAtt GetTodayGameLambda.Arn }
 
-  LambdaPermissionForApiGateway:
+  LambdaPermissionTodayGame:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref HelloLambda
+      FunctionName: !Ref GetTodayGameLambda
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/hello'
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/today-game'
 
+  # /submit-guess  (POST)
+  ApiGatewayResourceSubmitGuess:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
+      PathPart: submit-guess
+
+  ApiGatewayMethodSubmitGuessPost:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ResourceId: !Ref ApiGatewayResourceSubmitGuess
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - { Region: !Ref 'AWS::Region', LambdaArn: !GetAtt SubmitUserGuessLambda.Arn }
+
+  LambdaPermissionSubmitGuess:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SubmitUserGuessLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/POST/submit-guess'
+
+  # /leaderboard  (GET)
+  ApiGatewayResourceLeaderboard:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
+      PathPart: leaderboard
+
+  ApiGatewayMethodLeaderboardGet:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ResourceId: !Ref ApiGatewayResourceLeaderboard
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - { Region: !Ref 'AWS::Region', LambdaArn: !GetAtt GetLeaderboardLambda.Arn }
+
+  LambdaPermissionLeaderboard:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetLeaderboardLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/leaderboard'
+
+  # One deployment for all the above methods
   ApiGatewayDeployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
-      - ApiGatewayMethodHelloGet
+      - ApiGatewayMethodTodayGameGet
+      - ApiGatewayMethodSubmitGuessPost
+      - ApiGatewayMethodLeaderboardGet
     Properties:
       RestApiId: !Ref ApiGatewayRestApi
       StageName: prod
@@ -110,6 +230,6 @@ Outputs:
     Description: Public URL of the S3 static site
     Value: !Sub 'http://${FrontendBucketName}.s3-website-${AWS::Region}.amazonaws.com'
 
-  ApiUrl:
-    Description: Invoke URL for /hello endpoint
-    Value: !Sub 'https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod/hello'
+  ApiBaseUrl:
+    Description: Base URL for the Playing the Market API
+    Value: !Sub 'https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod'

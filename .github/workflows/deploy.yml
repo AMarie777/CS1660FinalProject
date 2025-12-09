@@ -29,11 +29,43 @@ jobs:
             --stack-name playing-the-market-main \
             --capabilities CAPABILITY_NAMED_IAM \
             --parameter-overrides FrontendBucketName=${FRONTEND_BUCKET}
+      - name: Deploy backend Lambdas
+        run: |
+          set -e
+          REGION=us-east-2
+
+          # getTodayGame
+          cd backend
+          zip -r ../backend-getTodayGame.zip lambdas/getTodayGame db
+          cd ..
+          aws lambda update-function-code \
+            --function-name getTodayGame \
+            --zip-file fileb://backend-getTodayGame.zip \
+            --region $REGION
+
+          # submitUserGuess
+          cd backend
+          zip -r ../backend-submitUserGuess.zip lambdas/submitUserGuess db
+          cd ..
+          aws lambda update-function-code \
+            --function-name submitUserGuess \
+            --zip-file fileb://backend-submitUserGuess.zip \
+            --region $REGION
+
+          # getLeaderboard
+          cd backend
+          zip -r ../backend-getLeaderboard.zip lambdas/getLeaderboard db
+          cd ..
+          aws lambda update-function-code \
+            --function-name getLeaderboard \
+            --zip-file fileb://backend-getLeaderboard.zip \
+            --region $REGION
 
       - name: Sync frontend to S3
         run: |
           aws s3 sync frontend/ s3://${FRONTEND_BUCKET} --delete
-     # 3. Set up Docker Buildx (needed for multi-platform builds)
+
+      # 3. Set up Docker Buildx (needed for multi-platform builds)
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
