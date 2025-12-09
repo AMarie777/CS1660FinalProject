@@ -5,10 +5,6 @@ Parameters:
   FrontendBucketName:
     Type: String
     Description: Globally unique S3 bucket name for frontend hosting
-  
-  LambdaCodeBucket:
-    Type: String
-    Description: S3 bucket that stores backend lambda zip files (getTodayGame, submitUserGuess, getLeaderboard)
 
 Resources:
   FrontendBucket:
@@ -38,7 +34,7 @@ Resources:
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: playing-the-market-lambda-role
+      RoleName: playing-the-market-lambda-role-1
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -48,26 +44,11 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Policies: #added inline policy for DynamoDB access
-        - PolicyName: BackendDynamoDBAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - dynamodb:GetItem
-                  - dynamodb:PutItem
-                  - dynamodb:Query
-                Resource:
-                  #ml table in deploy.sh
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/NVDA_Predictions
-                  #backend guesses table
-                  - !GetAtt UserGuessesTable.Arn
-  
+
   HelloLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: playing-the-market-hello
+      FunctionName: playing-the-market-hello1
       Runtime: nodejs20.x
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
@@ -81,72 +62,6 @@ Resources:
               body: JSON.stringify({ message: "Hello from Playing the Market!" })
             };
           };
-
-  #backend DynamoDB (guesses)
-  UserGuessesTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: UserGuesses
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: gameDate
-          AttributeType: S
-        - AttributeName: userId
-          AttributeType: S
-      KeySchema:
-        - AttributeName: gameDate
-          KeyType: HASH
-        - AttributeName: userId
-          KeyType: RANGE
-
-  #backend lambdas
-  GetTodayGameLambda:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: getTodayGame1
-      Runtime: nodejs20.x
-      Handler: index.handler
-      Role: !GetAtt LambdaExecutionRole.Arn
-      Timeout: 10
-      Code:
-        S3Bucket: !Ref LambdaCodeBucket
-        S3Key: backend/getTodayGame.zip
-      Environment:
-        Variables:
-          PREDICTIONS_TABLE: NVDA_Predictions
-          USER_GUESSES_TABLE: !Ref UserGuessesTable
-
-  SubmitUserGuessLambda:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: submitUserGuess1
-      Runtime: nodejs20.x
-      Handler: index.handler
-      Role: !GetAtt LambdaExecutionRole.Arn
-      Timeout: 10
-      Code:
-        S3Bucket: !Ref LambdaCodeBucket
-        S3Key: backend/submitUserGuess.zip
-      Environment:
-        Variables:
-          PREDICTIONS_TABLE: NVDA_Predictions
-          USER_GUESSES_TABLE: !Ref UserGuessesTable
-
-  GetLeaderboardLambda:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: getLeaderboard1
-      Runtime: nodejs20.x
-      Handler: index.handler
-      Role: !GetAtt LambdaExecutionRole.Arn
-      Timeout: 10
-      Code:
-        S3Bucket: !Ref LambdaCodeBucket
-        S3Key: backend/getLeaderboard.zip
-      Environment:
-        Variables:
-          PREDICTIONS_TABLE: NVDA_Predictions
-          USER_GUESSES_TABLE: !Ref UserGuessesTable
 
   ApiGatewayRestApi:
     Type: AWS::ApiGateway::RestApi
@@ -176,106 +91,6 @@ Resources:
               Region: !Ref 'AWS::Region',
               LambdaArn: !GetAtt HelloLambda.Arn
             }
-    
-  #today route
-  ApiGatewayResourceToday:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApi
-      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
-      PathPart: today
-
-  ApiGatewayMethodTodayGet:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApi
-      ResourceId: !Ref ApiGatewayResourceToday
-      HttpMethod: GET
-      AuthorizationType: NONE
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub
-          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - {
-              Region: !Ref 'AWS::Region',
-              LambdaArn: !GetAtt GetTodayGameLambda.Arn
-            }
-
-  #guess route
-  ApiGatewayResourceGuess:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApi
-      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
-      PathPart: guess
-
-  ApiGatewayMethodGuessPost:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApi
-      ResourceId: !Ref ApiGatewayResourceGuess
-      HttpMethod: POST
-      AuthorizationType: NONE
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub
-          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - {
-              Region: !Ref 'AWS::Region',
-              LambdaArn: !GetAtt SubmitUserGuessLambda.Arn
-            }
-
-  #leaderboard route
-  ApiGatewayResourceLeaderboard:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApi
-      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
-      PathPart: leaderboard
-
-  ApiGatewayMethodLeaderboardGet:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApi
-      ResourceId: !Ref ApiGatewayResourceLeaderboard
-      HttpMethod: GET
-      AuthorizationType: NONE
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub
-          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - {
-              Region: !Ref 'AWS::Region',
-              LambdaArn: !GetAtt GetLeaderboardLambda.Arn
-            }
-
-  #data route (data_lambda)
-  ApiGatewayResourceData:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApi
-      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
-      PathPart: data
-
-  ApiGatewayMethodDataGet:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApi
-      ResourceId: !Ref ApiGatewayResourceData
-      HttpMethod: GET
-      AuthorizationType: NONE
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub
-          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - {
-              Region: !Ref 'AWS::Region',
-              LambdaArn: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:data_lambda'
-            }
 
   LambdaPermissionForApiGateway:
     Type: AWS::Lambda::Permission
@@ -285,46 +100,10 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/hello'
 
-  GetTodayGamePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref GetTodayGameLambda
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/today'
-
-  SubmitUserGuessPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref SubmitUserGuessLambda
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/POST/guess'
-
-  GetLeaderboardPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref GetLeaderboardLambda
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/leaderboard'
-
-  DataLambdaPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: data_lambda
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/GET/data'
-
   ApiGatewayDeployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
       - ApiGatewayMethodHelloGet
-      - ApiGatewayMethodTodayGet
-      - ApiGatewayMethodGuessPost
-      - ApiGatewayMethodLeaderboardGet
-      - ApiGatewayMethodDataGet
     Properties:
       RestApiId: !Ref ApiGatewayRestApi
       StageName: prod
@@ -337,7 +116,3 @@ Outputs:
   ApiUrl:
     Description: Invoke URL for /hello endpoint
     Value: !Sub 'https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod/hello'
-
-  BackendBaseUrl:
-    Description: Base URL for backend API (today, guess, leaderboard)
-    Value: !Sub 'https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
