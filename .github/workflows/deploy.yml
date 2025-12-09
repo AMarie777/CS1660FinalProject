@@ -8,7 +8,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      FRONTEND_BUCKET: asta-frontend-bucket-name          # <--- Asta's S3 bucket
+      FRONTEND_BUCKET: astalaxmid           # <--- Asta's S3 bucket
       ECR_REGISTRY: 123456789012.dkr.ecr.us-east-2.amazonaws.com   # <--- Asta's ECR URL
 
     steps:
