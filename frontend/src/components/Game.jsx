@@ -1,55 +1,97 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getTodayGame, getStockData, submitUserGuess } from '../services/gameService';
+import { 
+  getTodayGame, 
+  submitUserGuess, 
+  getGameStatus,
+  getUserPoints,
+  getModelMetadata 
+} from '../services/gameService';
+import ModelMetrics from './ModelMetrics';
+import { PredictionComparison, FeatureImportance, RecentOpens } from './Charts';
 import './Game.css';
+
+// Import mock data for fallback
+const MOCK_GAME_DATA = {
+  gameDate: new Date().toISOString().slice(0, 10),
+  symbol: 'NVDA',
+  modelPrediction: {
+    predictedOpen: 145.50,
+    lower95: 142.30,
+    upper95: 148.70,
+  },
+};
+
+// Check if we're in demo mode (using mock data)
+const isDemoMode = !import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE_URL.includes('your-api-gateway-url');
 
 function Game() {
   const [prediction, setPrediction] = useState('');
   const [gameData, setGameData] = useState(null);
-  const [stockData, setStockData] = useState(null);
+  const [gameStatus, setGameStatus] = useState(null);
+  const [userPoints, setUserPoints] = useState(null);
+  const [modelMetadata, setModelMetadata] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [submitResult, setSubmitResult] = useState(null);
-  const [submittedGuess, setSubmittedGuess] = useState(null);
   const { user, logout } = useAuth();
 
-  // Fetch today's game data and stock data on component mount
+  // Fetch all game data on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        // Fetch both game data (ML predictions) and stock data (from data_lambda) in parallel
-        const errors = [];
-        const [gameDataResult, stockDataResult] = await Promise.all([
+        // Fetch data in parallel
+        const [gameDataResult, statusResult, pointsResult, metadataResult] = await Promise.allSettled([
           getTodayGame().catch(err => {
             console.error('Error fetching game data:', err);
-            errors.push(`Game data: ${err.message || 'Failed to load'}`);
+            // Return fallback data instead of throwing
+            return MOCK_GAME_DATA;
+          }),
+          getGameStatus().catch(err => {
+            console.error('Error fetching game status:', err);
             return null;
           }),
-          getStockData().catch(err => {
-            console.error('Error fetching stock data:', err);
-            errors.push(`Stock data: ${err.message || 'Failed to load'}`);
+          getUserPoints().catch(err => {
+            console.error('Error fetching user points:', err);
+            return { points: 0 };
+          }),
+          getModelMetadata().catch(err => {
+            console.error('Error fetching model metadata:', err);
             return null;
-          })
+          }),
         ]);
-        
-        if (gameDataResult) {
-          setGameData(gameDataResult);
+
+        if (gameDataResult.status === 'fulfilled') {
+          setGameData(gameDataResult.value);
+        } else {
+          console.error('Error fetching game data:', gameDataResult.reason);
+          setGameData(MOCK_GAME_DATA);
         }
-        if (stockDataResult) {
-          setStockData(stockDataResult);
+
+        if (statusResult.status === 'fulfilled' && statusResult.value) {
+          setGameStatus(statusResult.value);
+          // If user already submitted, show their guess
+          if (statusResult.value.userGuess) {
+            setSubmitResult({
+              userGuess: statusResult.value.userGuess,
+              botPrediction: statusResult.value.modelPrediction?.predictedOpen,
+            });
+          }
         }
-        
-        // Show error only if both failed, or show specific errors
-        if (!gameDataResult && !stockDataResult) {
-          setError(errors.length > 0 ? errors.join('; ') : 'Failed to load data. Please check your API configuration.');
-        } else if (errors.length > 0) {
-          // Show warning if only one failed
-          console.warn('Partial data loaded:', errors);
+
+        if (pointsResult.status === 'fulfilled' && pointsResult.value) {
+          setUserPoints(pointsResult.value.points || 0);
         }
+
+        if (metadataResult.status === 'fulfilled' && metadataResult.value) {
+          setModelMetadata(metadataResult.value);
+        }
+
       } catch (err) {
         setError(err.message || 'Failed to load data');
         console.error('Error fetching data:', err);
@@ -73,7 +115,6 @@ function Game() {
     try {
       setSubmitting(true);
       setError(null);
-      setSubmitResult(null);
       
       const result = await submitUserGuess(
         guessValue,
@@ -82,8 +123,14 @@ function Game() {
       );
       
       setSubmitResult(result);
-      setSubmittedGuess(guessValue);
-      setPrediction(''); // Clear input after successful submission
+      setPrediction('');
+      // Refresh game status to get updated data
+      try {
+        const statusResult = await getGameStatus();
+        setGameStatus(statusResult);
+      } catch (err) {
+        console.error('Error refreshing game status:', err);
+      }
     } catch (err) {
       setError(err.message || 'Failed to submit guess');
       console.error('Error submitting guess:', err);
@@ -96,26 +143,41 @@ function Game() {
     return (
       <div className="game-container">
         <div className="game-header">
-          <h1 className="title">BEAT THE BOT</h1>
+          <h1 className="title">📈 BEAT THE BOT</h1>
           <div className="user-section">
+            {userPoints !== null && (
+              <span className="user-points">Points: {userPoints}</span>
+            )}
             <span className="user-name">{user?.name || user?.email}</span>
             <button onClick={logout} className="logout-button">Logout</button>
           </div>
+        </div>
+        <div className="nav-links">
+          <Link to="/" className="nav-link active">Game</Link>
+          <Link to="/leaderboard" className="nav-link">Leaderboard</Link>
         </div>
         <div className="loading-message">Loading game data...</div>
       </div>
     );
   }
 
+  // Always show game interface, even if some APIs fail
   if (error && !gameData) {
     return (
       <div className="game-container">
         <div className="game-header">
-          <h1 className="title">BEAT THE BOT</h1>
+          <h1 className="title">📈 BEAT THE BOT</h1>
           <div className="user-section">
+            {userPoints !== null && (
+              <span className="user-points">Points: {userPoints}</span>
+            )}
             <span className="user-name">{user?.name || user?.email}</span>
             <button onClick={logout} className="logout-button">Logout</button>
           </div>
+        </div>
+        <div className="nav-links">
+          <Link to="/" className="nav-link active">Game</Link>
+          <Link to="/leaderboard" className="nav-link">Leaderboard</Link>
         </div>
         <div className="error-message">{error}</div>
         <button onClick={() => window.location.reload()} className="retry-button">
@@ -125,125 +187,166 @@ function Game() {
     );
   }
 
-  const stockName = gameData?.symbol || 'NVDA';
-  const priceRange = gameData?.modelPrediction 
+  const currentGameData = gameData || MOCK_GAME_DATA;
+  const stockName = currentGameData?.symbol || 'NVDA';
+  const priceRange = currentGameData?.modelPrediction 
     ? { 
-        low: gameData.modelPrediction.lower95, 
-        high: gameData.modelPrediction.upper95 
+        low: currentGameData.modelPrediction.lower95 || currentGameData.modelPrediction.Predicted_Low_NVDA || 142.30, 
+        high: currentGameData.modelPrediction.upper95 || currentGameData.modelPrediction.Predicted_High_NVDA || 148.70 
       }
-    : { low: 0, high: 0 };
-  const botPrediction = gameData?.modelPrediction?.predictedOpen || null;
+    : { low: 142.30, high: 148.70 };
+  const botPrediction = currentGameData?.modelPrediction?.predictedOpen || currentGameData?.modelPrediction?.Predicted_Open_NVDA || 145.50;
+  const userGuess = submitResult?.userGuess || gameStatus?.userGuess || null;
+  const actualOpen = gameStatus?.actualOpen || submitResult?.actualOpen || null;
 
   return (
     <div className="game-container">
       <div className="game-header">
-        <h1 className="title">BEAT THE BOT</h1>
+        <h1 className="title">📈 BEAT THE BOT</h1>
         <div className="user-section">
+          {userPoints !== null && (
+            <span className="user-points">Points: {userPoints}</span>
+          )}
           <span className="user-name">{user?.name || user?.email}</span>
           <button onClick={logout} className="logout-button">Logout</button>
         </div>
       </div>
+
+      <div className="nav-links">
+        <Link to="/" className="nav-link active">Game</Link>
+        <Link to="/leaderboard" className="nav-link">Leaderboard</Link>
+      </div>
+
+      {/* Show demo mode notice if using fallback data */}
+      {isDemoMode && (
+        <div className="demo-notice">
+          🎮 Demo Mode: Using mock data. Set VITE_API_BASE_URL environment variable to connect to backend API.
+        </div>
+      )}
       
-      {gameData && (
+      {(gameData || true) && (
         <>
           <div className="game-date">
-            Game Date: {gameData.gameDate || new Date().toISOString().slice(0, 10)}
-          </div>
-          
-          <p className="instruction">
-            {stockName} opening price will be in the range of [
-            <strong>${priceRange.low.toFixed(2)}</strong>, 
-            <strong>${priceRange.high.toFixed(2)}</strong>].
-          </p>
-          
-          <div className="bot-prediction">
-            <h3 className="bot-prediction-title">🤖 Bot's Prediction</h3>
-            <div className="bot-prediction-value">
-              ${botPrediction?.toFixed(2) || 'N/A'}
-            </div>
-            <p className="bot-prediction-note">
-              (95% confidence interval: ${priceRange.low.toFixed(2)} - ${priceRange.high.toFixed(2)})
-            </p>
+            Game Date: {(gameData || MOCK_GAME_DATA).gameDate || new Date().toISOString().slice(0, 10)}
           </div>
 
-          {stockData && (
-            <div className="data-section">
-              <h3 className="data-title">Stock Data</h3>
-              <div className="data-item">
-                <span className="data-label">Previous Close:</span>
-                <span className="data-value">${stockData.previousClose?.toFixed(2) || 'N/A'}</span>
-              </div>
-              <div className="data-item">
-                <span className="data-label">Latest Open:</span>
-                <span className="data-value">${stockData.latestOpen?.toFixed(2) || 'N/A'}</span>
-              </div>
-              <div className="data-item">
-                <span className="data-label">Latest High:</span>
-                <span className="data-value">${stockData.latestHigh?.toFixed(2) || 'N/A'}</span>
-              </div>
-              <div className="data-item">
-                <span className="data-label">Latest Low:</span>
-                <span className="data-value">${stockData.latestLow?.toFixed(2) || 'N/A'}</span>
-              </div>
-              <div className="data-item">
-                <span className="data-label">52 Week High:</span>
-                <span className="data-value">${stockData.week52High?.toFixed(2) || 'N/A'}</span>
-              </div>
-              <div className="data-item">
-                <span className="data-label">52 Week Low:</span>
-                <span className="data-value">${stockData.week52Low?.toFixed(2) || 'N/A'}</span>
-              </div>
+          {/* User Guess Section - Show input if no guess submitted yet */}
+          {!userGuess ? (
+            <div className="prediction-section">
+              <h2 className="question">What do you think NVIDIA's opening price will be tomorrow?</h2>
+              
+              <form onSubmit={handleSubmit} className="prediction-form">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className="prediction-input"
+                  placeholder="Enter your prediction"
+                  value={prediction}
+                  onChange={(e) => setPrediction(e.target.value)}
+                  disabled={submitting}
+                  required
+                />
+                <button 
+                  type="submit" 
+                  className="submit-button"
+                  disabled={submitting || !prediction}
+                >
+                  {submitting ? 'Submitting...' : 'Lock Prediction'}
+                </button>
+              </form>
+              
+              <p className="prediction-note">
+                Once you submit, your prediction will be locked and cannot be changed.
+              </p>
             </div>
+          ) : (
+            <>
+              {/* Show locked prediction */}
+              <div className="submit-result">
+                <h3 className="result-title">✅ Your Prediction is Locked!</h3>
+                <div className="result-details">
+                  <div className="result-item">
+                    <span className="result-label">Your Guess:</span>
+                    <span className="result-value">${userGuess.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3: Reveal Model Range AFTER submission */}
+              <div className="bot-prediction">
+                <h3 className="bot-prediction-title">🤖 Model's Prediction Range</h3>
+                <p className="bot-prediction-reveal">
+                  Model expects NVDA to open between <strong>${priceRange.low.toFixed(2)}</strong> and <strong>${priceRange.high.toFixed(2)}</strong>
+                </p>
+                {botPrediction && (
+                  <div className="bot-prediction-value">
+                    Model's predicted open: ${botPrediction.toFixed(2)}
+                  </div>
+                )}
+              </div>
+
+              {/* Show actual results if available (next day) */}
+              {actualOpen && (
+                <div className="actual-results">
+                  <h3 className="result-title">📊 Results</h3>
+                  <div className="result-details">
+                    <div className="result-item">
+                      <span className="result-label">Actual Opening Price:</span>
+                      <span className="result-value">${actualOpen.toFixed(2)}</span>
+                    </div>
+                    <div className="result-item">
+                      <span className="result-label">Your Error:</span>
+                      <span className="result-value">${Math.abs(userGuess - actualOpen).toFixed(2)}</span>
+                    </div>
+                    {botPrediction && (
+                      <div className="result-item">
+                        <span className="result-label">Bot's Error:</span>
+                        <span className="result-value">${Math.abs(botPrediction - actualOpen).toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           )}
-          
-          <h2 className="question">What do you think the opening price will be?</h2>
-          
-          <form onSubmit={handleSubmit} className="prediction-form">
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              className="prediction-input"
-              placeholder="Enter your prediction"
-              value={prediction}
-              onChange={(e) => setPrediction(e.target.value)}
-              disabled={submitting}
-              required
-            />
-            <button 
-              type="submit" 
-              className="submit-button"
-              disabled={submitting || !prediction}
-            >
-              {submitting ? 'Submitting...' : 'Submit Guess'}
-            </button>
-          </form>
 
           {error && (
             <div className="error-message">{error}</div>
           )}
 
-          {submitResult && (
-            <div className="submit-result">
-              <h3 className="result-title">Guess Submitted!</h3>
-              <div className="result-details">
-                <div className="result-item">
-                  <span className="result-label">Your Guess:</span>
-                  <span className="result-value">${(submittedGuess || 0).toFixed(2)}</span>
+          {/* Step 4: Show Model Inputs - Only AFTER user submits */}
+          {userGuess && (
+            <>
+              {/* Top 5-8 Metrics with live values + importance */}
+              {(modelMetadata || gameData) && (
+                <ModelMetrics 
+                  metrics={modelMetadata?.topMetrics || modelMetadata?.metrics || {}}
+                  featureImportance={modelMetadata?.featureImportance || []}
+                />
+              )}
+
+              {/* Visualizations - Only show after submission */}
+              {botPrediction && (
+                <div className="charts-section">
+                  <PredictionComparison 
+                    userGuess={userGuess}
+                    botPrediction={botPrediction}
+                    actualOpen={actualOpen}
+                  />
                 </div>
-                <div className="result-item">
-                  <span className="result-label">Bot's Prediction:</span>
-                  <span className="result-value">${submitResult.botPrediction?.toFixed(2) || botPrediction?.toFixed(2) || 'N/A'}</span>
-                </div>
-                {submitResult.didUserBeatBot !== null && (
-                  <div className={`result-item ${submitResult.didUserBeatBot ? 'result-success' : 'result-failure'}`}>
-                    <span className="result-label">
-                      {submitResult.didUserBeatBot ? '🎉 You beat the bot!' : '🤖 Bot was closer'}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
+              )}
+            </>
+          )}
+
+          {/* Feature Importance Chart */}
+          {modelMetadata?.featureImportance && modelMetadata.featureImportance.length > 0 && (
+            <FeatureImportance featureData={modelMetadata.featureImportance} />
+          )}
+
+          {/* Recent Opens Chart */}
+          {gameStatus?.recentOpens && gameStatus.recentOpens.length > 0 && (
+            <RecentOpens recentData={gameStatus.recentOpens} />
           )}
         </>
       )}
@@ -252,4 +355,3 @@ function Game() {
 }
 
 export default Game;
-

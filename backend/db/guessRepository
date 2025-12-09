@@ -9,6 +9,12 @@ const TABLE_NAME = process.env.USER_GUESSES_TABLE || "UserGuesses";
  * }
  */
 async function saveUserGuess(guess) {
+  // Check if user already has a guess for this date
+  const existing = await getUserGuess(guess.gameDate, guess.userId);
+  if (existing) {
+    throw new Error("User already submitted a guess for this date");
+  }
+
   const item = {
     gameDate: guess.gameDate,
     userId: guess.userId,
@@ -51,7 +57,31 @@ async function getGuessesForDate(gameDate) {
   return res.Items || [];
 }
 
+async function getUserGuess(gameDate, userId) {
+  const guesses = await getGuessesForDate(gameDate);
+  const userGuess = guesses.find(g => g.userId === userId);
+  return userGuess || null;
+}
+
+async function getUserAllGuesses(userId) {
+  // Scan for all guesses by user - note: this may be slow for large datasets
+  // In production, consider using a GSI with userId as partition key
+  const res = await dynamo
+    .scan({
+      TableName: TABLE_NAME,
+      FilterExpression: "userId = :uid",
+      ExpressionAttributeValues: {
+        ":uid": userId,
+      },
+    })
+    .promise();
+
+  return res.Items || [];
+}
+
 module.exports = {
   saveUserGuess,
   getGuessesForDate,
+  getUserGuess,
+  getUserAllGuesses,
 };

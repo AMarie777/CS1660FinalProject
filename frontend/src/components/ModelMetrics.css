@@ -1,0 +1,193 @@
+.model-metrics-container {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+}
+
+.metrics-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 20px 0;
+}
+
+.metrics-section {
+  margin-bottom: 30px;
+}
+
+.metrics-section:last-child {
+  margin-bottom: 0;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 15px 0;
+}
+
+.metrics-table-container {
+  overflow-x: auto;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background-color: white;
+}
+
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.metrics-table thead {
+  background-color: #e9ecef;
+}
+
+.metrics-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.metrics-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e9ecef;
+  color: #333;
+}
+
+.metrics-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.rank-cell {
+  font-weight: 600;
+  width: 60px;
+}
+
+.metric-name-cell {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  color: #495057;
+}
+
+.metric-value-cell {
+  font-family: 'Courier New', monospace;
+  font-weight: 500;
+  color: #0066cc;
+}
+
+.importance-cell {
+  color: #666;
+}
+
+.expand-button {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  text-align: left;
+  margin-bottom: 15px;
+}
+
+.expand-button:hover {
+  background-color: #f8f9fa;
+}
+
+.external-links-container {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.link-section {
+  margin-bottom: 25px;
+}
+
+.link-section:last-child {
+  margin-bottom: 0;
+}
+
+.link-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 12px 0;
+}
+
+.link-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.link-item {
+  margin-bottom: 8px;
+}
+
+.link-item:last-child {
+  margin-bottom: 0;
+}
+
+.external-link {
+  color: #0066cc;
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.2s;
+}
+
+.external-link:hover {
+  color: #0052a3;
+  text-decoration: underline;
+}
+
+.full-features-container {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.features-description {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 15px 0;
+  line-height: 1.6;
+}
+
+.features-list {
+  margin: 0;
+  padding-left: 20px;
+  color: #333;
+  line-height: 1.8;
+}
+
+.features-list li {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 768px) {
+  .metrics-table {
+    font-size: 12px;
+  }
+
+  .metrics-table th,
+  .metrics-table td {
+    padding: 8px 12px;
+  }
+
+  .metric-name-cell {
+    font-size: 11px;
+  }
+}
+

@@ -5,7 +5,7 @@ async function getPredictionForDate(predictionDate) {
   const res = await dynamo
     .get({
       TableName: TABLE_NAME,
-      Key: { Prediction_Date: predictionDate },
+      Key: { PredictionDate: predictionDate }, // ML lambda uses PredictionDate as key
     })
     .promise();
 

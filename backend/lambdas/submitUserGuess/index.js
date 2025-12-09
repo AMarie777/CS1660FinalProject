@@ -28,18 +28,24 @@ exports.handler = async (event) => {
 
     const userGuess = Number(body.userGuess);
     if (Number.isNaN(userGuess)) {
-      return {
-        statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: "userGuess must be a number" }),
-      };
+    return {
+      statusCode: 400,
+      headers: { 
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      },
+      body: JSON.stringify({ message: "userGuess must be a number" }),
+    };
     }
 
     const pred = await getPredictionForDate(gameDate);
     if (!pred) {
       return {
         statusCode: 400,
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        },
         body: JSON.stringify({
           message: "No bot prediction for this date",
           gameDate,
@@ -63,24 +69,47 @@ exports.handler = async (event) => {
       }
     }
 
-    await saveUserGuess({
-      gameDate,
-      userId,
-      username,
-      userGuess,
-      botPrediction,
-      actualOpen,
-      userError,
-      botError,
-      didUserBeatBot,
-    });
+    try {
+      await saveUserGuess({
+        gameDate,
+        userId,
+        username,
+        userGuess,
+        botPrediction,
+        actualOpen,
+        userError,
+        botError,
+        didUserBeatBot,
+      });
+    } catch (saveError) {
+      if (saveError.message.includes("already submitted")) {
+        return {
+          statusCode: 400,
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          },
+          body: JSON.stringify({ 
+            message: saveError.message,
+            gameDate,
+          }),
+        };
+      }
+      throw saveError;
+    }
 
     return {
       statusCode: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization",
+        "Access-Control-Allow-Methods": "POST,OPTIONS"
+      },
       body: JSON.stringify({
         gameDate,
         username,
+        userGuess,
         botPrediction,
         actualOpen,
         userError,
