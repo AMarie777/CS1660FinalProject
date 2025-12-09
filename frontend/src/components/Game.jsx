@@ -217,12 +217,12 @@ function Game() {
         <Link to="/leaderboard" className="nav-link">Leaderboard</Link>
       </div>
 
-      {/* Show demo mode notice if using fallback data */}
+      {/* Show demo mode notice if using fallback data
       {isDemoMode && (
         <div className="demo-notice">
           🎮 Demo Mode: Using mock data. Set VITE_API_BASE_URL environment variable to connect to backend API.
         </div>
-      )}
+      )} */}
       
       {(gameData || true) && (
         <>
