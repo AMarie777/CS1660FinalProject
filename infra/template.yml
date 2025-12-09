@@ -103,7 +103,7 @@ Resources:
   GetTodayGameLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: getTodayGame
+      FunctionName: getTodayGame1
       Runtime: nodejs20.x
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
@@ -119,7 +119,7 @@ Resources:
   SubmitUserGuessLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: submitUserGuess
+      FunctionName: submitUserGuess1
       Runtime: nodejs20.x
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
@@ -135,7 +135,7 @@ Resources:
   GetLeaderboardLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: getLeaderboard
+      FunctionName: getLeaderboard1
       Runtime: nodejs20.x
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
