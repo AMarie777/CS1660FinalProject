@@ -115,8 +115,8 @@ for IMAGE in ml_lambda data_lambda; do
     if ! aws ecr describe-repositories --repository-names $IMAGE --region $REGION >/dev/null 2>&1; then
         aws ecr create-repository --repository-name $IMAGE --region $REGION
     fi
-
-    docker buildx build --platform linux/amd64 --provenance=false -t $IMAGE ./$IMAGE
+    
+    docker buildx build --platform linux/amd64 --provenance=false -t $IMAGE ./$IMAGE --load
     docker tag $IMAGE:latest ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$IMAGE:latest
     docker push ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$IMAGE:latest
 done
