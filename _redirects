@@ -1,0 +1,4 @@
+# Redirect rules for Amplify hosting
+# This file ensures React Router works correctly with client-side routing
+/*    /index.html   200
+
