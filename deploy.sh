@@ -283,7 +283,7 @@ else
         --timeout 120 \
         --memory-size 256 \
         --layers "$LAYER_ARN" \
-        --zip-file fileb://email/email_lambda.zip
+        --zip-file fileb://email/email.py.zip
 fi
 
 # --------------------- Create EventBridge Rule ---------------------
