@@ -262,17 +262,38 @@ LAYER_ARN=$(aws lambda publish-layer-version \
 echo "Layer published with ARN: $LAYER_ARN"
 
 # --------------------- Create/Update Lambda Function ---------------------
+
+wait_for_lambda() {
+    local fn=$1
+    while true; do
+        STATUS=$(aws lambda get-function-configuration --function-name "$fn" \
+            --query "LastUpdateStatus" --output text)
+
+        if [[ "$STATUS" == "InProgress" ]]; then
+            echo "Lambda update still in progress... waiting 5s"
+            sleep 5
+        else
+            break
+        fi
+    done
+}
+
 if aws lambda get-function --function-name "$EMAIL_LAMBDA" >/dev/null 2>&1; then
     echo "Updating existing Lambda function $EMAIL_LAMBDA..."
+
     aws lambda update-function-code \
         --function-name "$EMAIL_LAMBDA" \
         --zip-file fileb://email/email.py.zip
+
+    # ⬅️ critical: wait here
+    wait_for_lambda "$EMAIL_LAMBDA"
 
     aws lambda update-function-configuration \
         --function-name "$EMAIL_LAMBDA" \
         --layers "$LAYER_ARN" \
         --timeout 120 \
         --memory-size 256
+
 else
     echo "Creating Lambda function $EMAIL_LAMBDA..."
     aws lambda create-function \
