@@ -7,9 +7,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      FRONTEND_BUCKET: astalaxmid1-hello-hello1
-      ECR_REGISTRY: 123456789012.dkr.ecr.us-east-2.amazonaws.com
 
     steps:
       - name: Checkout repo
@@ -22,89 +19,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-2
 
-      - name: Deploy CloudFormation stack
+      # We used to deploy a CloudFormation stack + S3 frontend here.
+      # Now Amplify hosts the frontend and Lambdas are managed manually,
+      # so this step is just a placeholder so the workflow succeeds.
+      - name: Skip infra deployment (using Amplify instead)
         run: |
-          aws cloudformation deploy \
-            --template-file infra/template.yml \
-            --stack-name playing-the-market-main \
-            --capabilities CAPABILITY_NAMED_IAM \
-            --parameter-overrides FrontendBucketName=${FRONTEND_BUCKET}
-
-      - name: Deploy backend Lambdas
-        run: |
-          set -e
-          REGION=us-east-2
-
-          # getTodayGame
-          cd backend
-          zip -r ../backend-getTodayGame.zip lambdas/getTodayGame db
-          cd ..
-          aws lambda update-function-code \
-            --function-name getTodayGame \
-            --zip-file fileb://backend-getTodayGame.zip \
-            --region $REGION
-
-          # submitUserGuess
-          cd backend
-          zip -r ../backend-submitUserGuess.zip lambdas/submitUserGuess db
-          cd ..
-          aws lambda update-function-code \
-            --function-name submitUserGuess \
-            --zip-file fileb://backend-submitUserGuess.zip \
-            --region $REGION
-
-          # getLeaderboard
-          cd backend
-          zip -r ../backend-getLeaderboard.zip lambdas/getLeaderboard db
-          cd ..
-          aws lambda update-function-code \
-            --function-name getLeaderboard \
-            --zip-file fileb://backend-getLeaderboard.zip \
-            --region $REGION
-
-          # getGameStatus
-          cd backend
-          zip -r ../backend-getGameStatus.zip lambdas/getGameStatus db
-          cd ..
-          aws lambda update-function-code \
-            --function-name getGameStatus \
-            --zip-file fileb://backend-getGameStatus.zip \
-            --region $REGION
-
-          # getUserPoints
-          cd backend
-          zip -r ../backend-getUserPoints.zip lambdas/getUserPoints db
-          cd ..
-          aws lambda update-function-code \
-            --function-name getUserPoints \
-            --zip-file fileb://backend-getUserPoints.zip \
-            --region $REGION
-
-          # getModelMetadata
-          cd backend
-          zip -r ../backend-getModelMetadata.zip lambdas/getModelMetadata db
-          cd ..
-          aws lambda update-function-code \
-            --function-name getModelMetadata \
-            --zip-file fileb://backend-getModelMetadata.zip \
-            --region $REGION
-
-      - name: Sync frontend to S3
-        run: |
-          aws s3 sync frontend/ s3://${FRONTEND_BUCKET} --delete
-
-      # 3. Set up Docker Buildx (needed for multi-platform builds)
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      # 4. Log in to AWS ECR
-      - name: Login to Amazon ECR
-        run: |
-          aws ecr get-login-password --region us-east-2 \
-            | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-
-      # 5. Run deployment script
-      - name: Deploy AWS resources
-        run: |
-          chmod +x ./deploy.sh
-          ./deploy.sh
+          echo "Skipping CloudFormation and S3 deploy."
+          echo "Frontend is deployed via AWS Amplify."
+          echo "Backend Lambdas are updated manually in the console."
