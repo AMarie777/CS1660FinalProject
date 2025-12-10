@@ -21,12 +21,12 @@ echo "Checking DynamoDB table UserGuesses1..."
 if ! aws dynamodb describe-table --table-name UserGuesses1 --region $REGION >/dev/null 2>&1; then
   echo "Creating DynamoDB table UserGuesses1..."
 
-  aws dynamodb create-table \
+ aws dynamodb create-table \
     --table-name UserGuesses1 \
-    --attribute-definitions AttributeName=id,AttributeType=S \
-    --key-schema AttributeName=id,KeyType=HASH \
+    --attribute-definitions AttributeName=email,AttributeType=S \
+    --key-schema AttributeName=email,KeyType=HASH \
     --billing-mode PAY_PER_REQUEST \
-    --region $REGION
+    --region $REGIO
 
   echo "Waiting for table to become ACTIVE..."
   aws dynamodb wait table-exists --table-name UserGuesses1 --region $REGION
@@ -247,9 +247,6 @@ HANDLER="lambda_function.lambda_handler"
 EVENT_RULE_NAME="market_open_30min"
 EVENT_CRON="cron(0 15 * * ? *)"  # 10:00 AM EST = 15:00 UTC
 
-# --------------------- Upload Layer to S3 ---------------------
-echo "Uploading Lambda layer to S3..."
-aws s3 cp "$LAYER_ZIP" "s3://$S3_BUCKET/$S3_KEY" --region $REGION
 
 # --------------------- Publish Layer ---------------------
 echo "Publishing Lambda layer $LAYER_NAME..."
