@@ -1,4 +1,6 @@
-const { getPredictionForDate } = require("../../db/predictionRepository");
+// backend/lambdas/getTodayGame/index.js
+
+const predictionRepo = require("./db/predictionRepository");
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -14,15 +16,26 @@ function buildCors() {
 }
 
 exports.handler = async (event) => {
-  if (event?.httpMethod === "OPTIONS") {
-    return { statusCode: 200, headers: buildCors(), body: "" };
+  if (event && event.httpMethod === "OPTIONS") {
+    return {
+      statusCode: 200,
+      headers: buildCors(),
+      body: "",
+    };
   }
 
   try {
     const date = todayISO();
-    const pred = await getPredictionForDate(date);
+    console.log("getTodayGame for date:", date);
+    console.log(
+      "predictionRepo keys:",
+      predictionRepo && Object.keys(predictionRepo)
+    );
+
+    const pred = await predictionRepo.getPredictionForDate(date);
 
     if (!pred) {
+      console.log("No prediction row found for date", date);
       return {
         statusCode: 404,
         headers: buildCors(),
@@ -32,6 +45,8 @@ exports.handler = async (event) => {
         }),
       };
     }
+
+    console.log("Found prediction:", pred);
 
     return {
       statusCode: 200,

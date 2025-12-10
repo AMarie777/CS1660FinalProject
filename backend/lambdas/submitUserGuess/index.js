@@ -1,4 +1,4 @@
-const { saveUserGuess } = require("../../db/guessRepository");
+const { saveUserGuess } = require("./db/guessRepository");
 
 function buildCors() {
   return {

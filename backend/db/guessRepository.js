@@ -1,38 +1,28 @@
 const dynamo = require("./dynamoClient");
+const { PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 
-const TABLE_NAME = process.env.USER_GUESSES_TABLE || "UserGuesses1";
+const TABLE_NAME = process.env.USER_GUESSES_TABLE;
 
-/**
- * Saves a user's guess.
- * Overwrites the row because PK = email.
- */
-async function saveUserGuess({ email, guess }) {
-  const item = {
-    email,
-    guess,
-  };
+async function saveUserGuess(email, guess) {
+  const cmd = new PutCommand({
+    TableName: TABLE_NAME,
+    Item: {
+      email,
+      guess,
+    },
+  });
 
-  await dynamo
-    .put({
-      TableName: TABLE_NAME,
-      Item: item,
-    })
-    .promise();
-
-  return item;
+  await dynamo.send(cmd);
+  return { email, guess };
 }
 
-/**
- * Retrieves the user's guess.
- */
 async function getUserGuess(email) {
-  const res = await dynamo
-    .get({
-      TableName: TABLE_NAME,
-      Key: { email },
-    })
-    .promise();
+  const cmd = new GetCommand({
+    TableName: TABLE_NAME,
+    Key: { email },
+  });
 
+  const res = await dynamo.send(cmd);
   return res.Item || null;
 }
 
