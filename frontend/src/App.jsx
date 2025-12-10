@@ -5,7 +5,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Game from './components/Game';
-import Leaderboard from './components/Leaderboard';
 import './App.css';
 
 function App() {
@@ -20,14 +19,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <Game />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/leaderboard"
-            element={
-              <ProtectedRoute>
-                <Leaderboard />
               </ProtectedRoute>
             }
           />

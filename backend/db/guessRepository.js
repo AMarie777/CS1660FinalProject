@@ -1,35 +1,42 @@
 const dynamo = require("./dynamoClient");
+
 const TABLE_NAME = process.env.USER_GUESSES_TABLE || "UserGuesses1";
 
-async function saveUserGuess(guess) {
+/**
+ * Saves a user's guess.
+ * Overwrites the row because PK = email.
+ */
+async function saveUserGuess({ email, guess }) {
   const item = {
-    id: guess.id,          // partition key
-    email: guess.email,
-    guess: guess.guess,    // user prediction
-    createdAt: Date.now()
+    email,
+    guess,
   };
 
-  await dynamo.put({
-    TableName: TABLE_NAME,
-    Item: item
-  }).promise();
+  await dynamo
+    .put({
+      TableName: TABLE_NAME,
+      Item: item,
+    })
+    .promise();
 
   return item;
 }
 
-async function getUserGuesses(id) {
-  const res = await dynamo.query({
-    TableName: TABLE_NAME,
-    KeyConditionExpression: "id = :i",
-    ExpressionAttributeValues: {
-      ":i": id
-    }
-  }).promise();
+/**
+ * Retrieves the user's guess.
+ */
+async function getUserGuess(email) {
+  const res = await dynamo
+    .get({
+      TableName: TABLE_NAME,
+      Key: { email },
+    })
+    .promise();
 
-  return res.Items || [];
+  return res.Item || null;
 }
 
 module.exports = {
   saveUserGuess,
-  getUserGuesses
+  getUserGuess,
 };

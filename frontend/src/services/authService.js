@@ -1,174 +1,80 @@
 /**
  * Authentication Service
  * 
- * This service handles all authentication-related API calls.
- * Replace the placeholder implementations with actual backend endpoints.
+ * For this project, "authentication" is mocked.
+ * The token MUST be the user's email because backend
+ * reads the email from Authorization: Bearer <email>.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
-
-/**
- * Login a user
- * @param {string} email - User email
- * @param {string} password - User password
- * @returns {Promise<{user: object, token: string}>}
- */
 export const login = async (email, password) => {
-  // TODO: Replace with actual backend endpoint
-  // Example implementation:
-  /*
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email, password }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Login failed');
-  }
-
-  const data = await response.json();
-  return data;
-  */
-
-  // Placeholder for development
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       if (email && password) {
-        resolve({
-          user: { id: '1', email, name: 'Test User' },
-          token: 'mock-jwt-token',
-        });
+        const user = {
+          id: email,
+          email,
+          name: email,
+        };
+
+        const token = email; // CRITICAL — backend depends on this
+
+        // Save locally
+        localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("token", token);
+
+        resolve({ user, token });
       } else {
-        reject(new Error('Email and password are required'));
+        reject(new Error("Email and password are required"));
       }
-    }, 1000);
+    }, 300);
   });
 };
 
-/**
- * Register a new user
- * @param {string} email - User email
- * @param {string} password - User password
- * @param {string} name - User name (optional)
- * @returns {Promise<{user: object, token: string}>}
- */
-export const signup = async (email, password, name = '') => {
-  // TODO: Replace with actual backend endpoint
-  // Example implementation:
-  /*
-  const response = await fetch(`${API_BASE_URL}/auth/signup`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email, password, name }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Signup failed');
-  }
-
-  const data = await response.json();
-  return data;
-  */
-
-  // Placeholder for development
+export const signup = async (email, password, name = "") => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       if (email && password) {
-        resolve({
-          user: { id: '1', email, name: name || 'New User' },
-          token: 'mock-jwt-token',
-        });
+        const user = {
+          id: email,
+          email,
+          name: name || email,
+        };
+
+        const token = email;
+
+        localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("token", token);
+
+        resolve({ user, token });
       } else {
-        reject(new Error('Email and password are required'));
+        reject(new Error("Email, password, and name are required"));
       }
-    }, 1000);
+    }, 300);
   });
 };
 
-/**
- * Logout the current user
- * @returns {Promise<void>}
- */
 export const logout = async () => {
-  // TODO: Replace with actual backend endpoint if needed
-  // Example implementation:
-  /*
-  const token = localStorage.getItem('token');
-  if (token) {
-    await fetch(`${API_BASE_URL}/auth/logout`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-  }
-  */
-
-  // Clear local storage
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
+  localStorage.removeItem("user");
+  localStorage.removeItem("token");
 };
 
-/**
- * Verify if the current token is valid
- * @returns {Promise<{user: object}>}
- */
 export const verifyToken = async () => {
-  // TODO: Replace with actual backend endpoint
-  // Example implementation:
-  /*
-  const token = localStorage.getItem('token');
-  if (!token) {
-    throw new Error('No token found');
-  }
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const user = getCurrentUser();
+      const token = getToken();
 
-  const response = await fetch(`${API_BASE_URL}/auth/verify`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
+      if (user && token) resolve({ user });
+      else reject(new Error("No valid session"));
+    }, 200);
   });
-
-  if (!response.ok) {
-    throw new Error('Token verification failed');
-  }
-
-  const data = await response.json();
-  return data;
-  */
-
-  // Placeholder for development
-  const token = localStorage.getItem('token');
-  const user = localStorage.getItem('user');
-  
-  if (token && user) {
-    return { user: JSON.parse(user) };
-  }
-  
-  throw new Error('No valid token found');
 };
 
-/**
- * Get the current user from localStorage
- * @returns {object|null}
- */
 export const getCurrentUser = () => {
-  const user = localStorage.getItem('user');
-  return user ? JSON.parse(user) : null;
+  const raw = localStorage.getItem("user");
+  return raw ? JSON.parse(raw) : null;
 };
 
-/**
- * Get the current token from localStorage
- * @returns {string|null}
- */
 export const getToken = () => {
-  return localStorage.getItem('token');
+  return localStorage.getItem("token");
 };
-

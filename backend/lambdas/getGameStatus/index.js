@@ -1,65 +1,70 @@
-const dynamo = require("./db/dynamoClient");
-
-const PRED_TABLE = process.env.PREDICTIONS_TABLE || "NVDA_Predictions1";
-const GUESSES_TABLE = process.env.USER_GUESSES_TABLE || "UserGuesses1";
+const { getUserGuess } = require("../../db/guessRepository");
+const { getPredictionForDate } = require("../../db/predictionRepository");
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function buildCors() {
+  return {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "*",
+    "Access-Control-Allow-Methods": "GET,OPTIONS",
+  };
+}
+
+function getEmailFromAuth(event) {
+  const h = event?.headers || {};
+  const auth = h.Authorization || h.authorization;
+  if (!auth?.startsWith("Bearer ")) return null;
+  return auth.slice(7).trim();
+}
+
 exports.handler = async (event) => {
+  if (event?.httpMethod === "OPTIONS") {
+    return { statusCode: 200, headers: buildCors(), body: "" };
+  }
+
   try {
-    const qs = (event && event.queryStringParameters) || {};
-    const gameDate = qs.gameDate || todayISO();
+    const email = getEmailFromAuth(event);
 
-    // 1) Check if we have a prediction for that date
-    const predRes = await dynamo
-      .get({
-        TableName: PRED_TABLE,
-        Key: { PredictionDate: gameDate },
-      })
-      .promise();
+    const date = todayISO();
+    const [guessRow, pred] = await Promise.all([
+      email ? getUserGuess(email) : null,
+      getPredictionForDate(date),
+    ]);
 
-    const hasPrediction = !!predRes.Item;
+    if (!pred) {
+      return {
+        statusCode: 200,
+        headers: buildCors(),
+        body: JSON.stringify({
+          status: "NO_GAME",
+          gameDate: date,
+          userGuess: guessRow?.guess || null,
+        }),
+      };
+    }
 
-    // 2) Count finished guesses (where didUserBeatBot exists)
-    const guessesRes = await dynamo
-      .scan({
-        TableName: GUESSES_TABLE,
-        FilterExpression:
-          "gameDate = :d AND attribute_exists(didUserBeatBot)",
-        ExpressionAttributeValues: {
-          ":d": gameDate,
-        },
-      })
-      .promise();
-
-    const finishedCount = (guessesRes.Items || []).length;
-
-    let status = "NO_GAME";
-    if (hasPrediction && finishedCount === 0) status = "OPEN";
-    if (hasPrediction && finishedCount > 0) status = "CLOSED";
+    const actual = pred.Actual_Open_NVDA;
+    const status = Number.isFinite(actual) ? "CLOSED" : "OPEN";
 
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type,Authorization",
-        "Access-Control-Allow-Methods": "GET,OPTIONS",
-      },
+      headers: buildCors(),
       body: JSON.stringify({
-        gameDate,
-        hasPrediction,
-        finishedCount,
         status,
+        gameDate: date,
+        userGuess: guessRow?.guess || null,
+        actualOpen: Number.isFinite(actual) ? actual : null,
       }),
     };
   } catch (err) {
-    console.error("getGameStatus error", err);
+    console.error("getGameStatus error:", err);
     return {
       statusCode: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: buildCors(),
       body: JSON.stringify({ message: "Internal server error" }),
     };
   }

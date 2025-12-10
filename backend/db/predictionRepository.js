@@ -1,11 +1,12 @@
 const dynamo = require("./dynamoClient");
-const TABLE_NAME = process.env.PREDICTIONS_TABLE || "NVDA_Predictions1";
+
+const TABLE_NAME = process.env.PREDICTIONS_TABLE || "NVDA_Predictions";
 
 async function getPredictionForDate(predictionDate) {
   const res = await dynamo
     .get({
       TableName: TABLE_NAME,
-      Key: { PredictionDate: predictionDate }, // ML lambda uses PredictionDate as key
+      Key: { PredictionDate: predictionDate },
     })
     .promise();
 

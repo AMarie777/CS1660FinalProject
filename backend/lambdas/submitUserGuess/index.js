@@ -1,96 +1,68 @@
-const {
-  getPredictionForDate,
-} = require("../../db/predictionRepository");
 const { saveUserGuess } = require("../../db/guessRepository");
 
+function buildCors() {
+  return {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "*",
+    "Access-Control-Allow-Methods": "POST,OPTIONS",
+  };
+}
+
 function parseBody(event) {
+  if (!event?.body) return {};
   try {
-    if (!event.body) return {};
     return JSON.parse(event.body);
   } catch {
     return {};
   }
 }
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+function getEmailFromAuth(event) {
+  const h = event?.headers || {};
+  const auth = h.Authorization || h.authorization;
+  if (!auth?.startsWith("Bearer ")) return null;
+  return auth.slice(7).trim();
 }
 
 exports.handler = async (event) => {
+  if (event?.httpMethod === "OPTIONS") {
+    return { statusCode: 200, headers: buildCors(), body: "" };
+  }
+
   try {
+    const email = getEmailFromAuth(event);
     const body = parseBody(event);
 
-    const gameDate = body.gameDate || todayISO();
-    const username = body.username || "anonymous";
-    const userId = body.userId || "test-user";
-
-    const userGuess = Number(body.userGuess);
-    if (Number.isNaN(userGuess)) {
+    if (!email) {
       return {
         statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: "userGuess must be a number" }),
+        headers: buildCors(),
+        body: JSON.stringify({ message: "Missing email in Authorization header" }),
       };
     }
 
-    const pred = await getPredictionForDate(gameDate);
-    if (!pred) {
+    const guess = Number(body.guess);
+    if (!Number.isFinite(guess)) {
       return {
         statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: "No bot prediction for this date",
-          gameDate,
-        }),
+        headers: buildCors(),
+        body: JSON.stringify({ message: "guess must be a number" }),
       };
     }
 
-    const botPrediction = Number(pred.Predicted_Open_NVDA);
-
-    let actualOpen = null;
-    let userError = null;
-    let botError = null;
-    let didUserBeatBot = null;
-
-    if (body.actualOpen !== undefined && body.actualOpen !== null) {
-      actualOpen = Number(body.actualOpen);
-      if (!Number.isNaN(actualOpen)) {
-        userError = Math.abs(actualOpen - userGuess);
-        botError = Math.abs(actualOpen - botPrediction);
-        didUserBeatBot = userError < botError;
-      }
-    }
-
-    await saveUserGuess({
-      gameDate,
-      userId,
-      username,
-      userGuess,
-      botPrediction,
-      actualOpen,
-      userError,
-      botError,
-      didUserBeatBot,
-    });
+    const saved = await saveUserGuess({ email, guess });
 
     return {
       statusCode: 200,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        gameDate,
-        username,
-        botPrediction,
-        actualOpen,
-        userError,
-        botError,
-        didUserBeatBot,
-      }),
+      headers: buildCors(),
+      body: JSON.stringify(saved),
     };
   } catch (err) {
-    console.error("submitUserGuess error", err);
+    console.error("submitUserGuess error:", err);
     return {
       statusCode: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: buildCors(),
       body: JSON.stringify({ message: "Internal server error" }),
     };
   }
