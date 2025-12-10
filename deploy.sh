@@ -380,3 +380,95 @@ aws events put-targets \
     --targets "Id"="1","Arn"="arn:aws:lambda:${REGION}:${ACCOUNT_ID}:function:email"
 
 echo " All resources created/updated successfully!"
+
+
+
+
+
+echo "=== Get API Gateway URL for frontend ==="
+
+get_api_url() {
+  local REGION="us-east-2"
+  local API_URL=""
+  local STACK_NAMES=("playing-the-market-main" "playing-the-market" "playing-the-market-api")
+
+  for STACK in "${STACK_NAMES[@]}"; do
+    echo "Checking stack: $STACK"
+    API_URL=$(aws cloudformation describe-stacks \
+      --stack-name "$STACK" \
+      --region "$REGION" \
+      --query 'Stacks[0].Outputs[?OutputKey==`ApiBaseUrl`].OutputValue' \
+      --output text 2>/dev/null)
+
+    if [ -n "$API_URL" ] && [ "$API_URL" != "None" ]; then
+      echo "✅ Found API URL in stack: $STACK"
+      break
+    fi
+  done
+
+  if [ -z "$API_URL" ] || [ "$API_URL" == "None" ]; then
+    echo "Searching API Gateway directly..."
+    API_ID=$(aws apigateway get-rest-apis \
+      --region "$REGION" \
+      --query 'items[?contains(name, `playing-the-market`) || name==`playing-the-market-api`].id' \
+      --output text 2>/dev/null | head -1)
+
+    if [ -n "$API_ID" ]; then
+      API_URL="https://${API_ID}.execute-api.${REGION}.amazonaws.com/prod"
+      echo "✅ Found API Gateway: $API_ID"
+    fi
+  fi
+
+  if [ -z "$API_URL" ] || [ "$API_URL" == "None" ]; then
+    echo "❌ Could not find API Gateway URL for frontend"
+    exit 1
+  fi
+
+  echo "$API_URL"
+}
+
+API_URL=$(get_api_url)
+echo "Using API URL: $API_URL"
+echo "=== Build frontend ==="
+
+cd frontend
+
+export VITE_API_BASE_URL="$API_URL"
+
+npm ci || npm install
+npm run build
+
+cd ..
+echo "=== Deploy frontend to S3 / CloudFront ==="
+
+INFRA_STACK="playing-the-market-infra"
+
+FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
+  --stack-name "$INFRA_STACK" \
+  --region "$REGION" \
+  --query "Stacks[0].Outputs[?OutputKey=='FrontendBucketName'].OutputValue" \
+  --output text)
+
+if [ -z "$FRONTEND_BUCKET" ]; then
+  echo "❌ Could not find FrontendBucketName in $INFRA_STACK"
+  exit 1
+fi
+
+echo "Uploading to bucket: $FRONTEND_BUCKET"
+aws s3 sync frontend/dist "s3://$FRONTEND_BUCKET" --delete
+
+DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+  --stack-name "$INFRA_STACK" \
+  --region "$REGION" \
+  --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" \
+  --output text)
+
+if [ -n "$DISTRIBUTION_ID" ]; then
+  aws cloudfront create-invalidation \
+    --distribution-id "$DISTRIBUTION_ID" \
+    --paths "/*"
+  echo "Cache invalidated."
+fi
+
+echo "✅ Frontend deployed successfully!"
+
