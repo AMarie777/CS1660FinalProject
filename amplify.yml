@@ -3,14 +3,10 @@ frontend:
   phases:
     preBuild:
       commands:
-        - cd frontend
-        - npm ci
+        - npm ci --prefix frontend
     build:
       commands:
-        - cd frontend
-        - npm run build
-        # copy Netlify-style redirects file into the built app (optional but nice)
-        - cp ../_redirects dist/_redirects || true
+        - npm run build --prefix frontend
   artifacts:
     baseDirectory: frontend/dist
     files:
