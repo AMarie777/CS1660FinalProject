@@ -332,7 +332,7 @@ function Game() {
 function Header({ user, userPoints, logout }) {
   return (
     <div className="game-header">
-      <h1 className="title">📈 BEAT THE BOT</h1>
+      <h1 className="title">BEAT THE BOT</h1>
       <div className="user-section">
         <span className="user-points">Points: {userPoints}</span>
         <span className="user-name">{user?.name || user?.email}</span>
