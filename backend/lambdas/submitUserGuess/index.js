@@ -1,7 +1,7 @@
 const {
   getPredictionForDate,
-} = require("./db/predictionRepository");
-const { saveUserGuess } = require("./db/guessRepository");
+} = require("../../db/predictionRepository");
+const { saveUserGuess } = require("../../db/guessRepository");
 
 function parseBody(event) {
   try {
@@ -22,30 +22,22 @@ exports.handler = async (event) => {
 
     const gameDate = body.gameDate || todayISO();
     const username = body.username || "anonymous";
-
-    const userId =
-      body.userId || "test-user"; //can later hook to Cognito
+    const userId = body.userId || "test-user";
 
     const userGuess = Number(body.userGuess);
     if (Number.isNaN(userGuess)) {
-    return {
-      statusCode: 400,
-      headers: { 
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*"
-      },
-      body: JSON.stringify({ message: "userGuess must be a number" }),
-    };
+      return {
+        statusCode: 400,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: "userGuess must be a number" }),
+      };
     }
 
     const pred = await getPredictionForDate(gameDate);
     if (!pred) {
       return {
         statusCode: 400,
-        headers: { 
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: "No bot prediction for this date",
           gameDate,
@@ -69,47 +61,24 @@ exports.handler = async (event) => {
       }
     }
 
-    try {
-      await saveUserGuess({
-        gameDate,
-        userId,
-        username,
-        userGuess,
-        botPrediction,
-        actualOpen,
-        userError,
-        botError,
-        didUserBeatBot,
-      });
-    } catch (saveError) {
-      if (saveError.message.includes("already submitted")) {
-        return {
-          statusCode: 400,
-          headers: { 
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*"
-          },
-          body: JSON.stringify({ 
-            message: saveError.message,
-            gameDate,
-          }),
-        };
-      }
-      throw saveError;
-    }
+    await saveUserGuess({
+      gameDate,
+      userId,
+      username,
+      userGuess,
+      botPrediction,
+      actualOpen,
+      userError,
+      botError,
+      didUserBeatBot,
+    });
 
     return {
       statusCode: 200,
-      headers: { 
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type,Authorization",
-        "Access-Control-Allow-Methods": "POST,OPTIONS"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         gameDate,
         username,
-        userGuess,
         botPrediction,
         actualOpen,
         userError,

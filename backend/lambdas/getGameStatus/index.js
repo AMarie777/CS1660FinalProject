@@ -1,56 +1,59 @@
-const { getPredictionForDate } = require("./db/predictionRepository");
-const { getUserGuess, getUserAllGuesses } = require("./db/guessRepository");
+const dynamo = require("./db/dynamoClient");
+
+const PRED_TABLE = process.env.PREDICTIONS_TABLE || "NVDA_Predictions1";
+const GUESSES_TABLE = process.env.USER_GUESSES_TABLE || "UserGuesses1";
 
 function todayISO() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-}
-
-function getUserId(event) {
-  // Extract userId from Cognito authorizer or fallback to query/header
-  if (event.requestContext && event.requestContext.authorizer) {
-    return event.requestContext.authorizer.userId || event.requestContext.authorizer.claims?.sub;
-  }
-  // Fallback for development/testing
-  const qs = (event && event.queryStringParameters) || {};
-  return qs.userId || event.headers?.['x-user-id'] || 'anonymous';
+  return new Date().toISOString().slice(0, 10);
 }
 
 exports.handler = async (event) => {
   try {
-    const gameDate = todayISO();
-    const userId = getUserId(event);
+    const qs = (event && event.queryStringParameters) || {};
+    const gameDate = qs.gameDate || todayISO();
 
-    // Get prediction for today
-    const pred = await getPredictionForDate(gameDate);
-    
-    // Get user's guess for today if it exists
-    const userGuessData = await getUserGuess(gameDate, userId);
+    // 1) Check if we have a prediction for that date
+    const predRes = await dynamo
+      .get({
+        TableName: PRED_TABLE,
+        Key: { PredictionDate: gameDate },
+      })
+      .promise();
 
-    // Calculate user points from all guesses
-    const allGuesses = await getUserAllGuesses(userId);
-    const userPoints = allGuesses.filter(g => g.didUserBeatBot === true).length;
+    const hasPrediction = !!predRes.Item;
 
-    const response = {
-      gameDate,
-      userGuess: userGuessData?.userGuess || null,
-      modelPrediction: pred ? {
-        predictedOpen: pred.Predicted_Open_NVDA,
-        lower95: pred.Predicted_Low_NVDA,
-        upper95: pred.Predicted_High_NVDA,
-      } : null,
-      actualOpen: userGuessData?.actualOpen || null,
-      userPoints,
-    };
+    // 2) Count finished guesses (where didUserBeatBot exists)
+    const guessesRes = await dynamo
+      .scan({
+        TableName: GUESSES_TABLE,
+        FilterExpression:
+          "gameDate = :d AND attribute_exists(didUserBeatBot)",
+        ExpressionAttributeValues: {
+          ":d": gameDate,
+        },
+      })
+      .promise();
+
+    const finishedCount = (guessesRes.Items || []).length;
+
+    let status = "NO_GAME";
+    if (hasPrediction && finishedCount === 0) status = "OPEN";
+    if (hasPrediction && finishedCount > 0) status = "CLOSED";
 
     return {
       statusCode: 200,
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Headers": "Content-Type,Authorization",
-        "Access-Control-Allow-Methods": "GET,OPTIONS"
+        "Access-Control-Allow-Methods": "GET,OPTIONS",
       },
-      body: JSON.stringify(response),
+      body: JSON.stringify({
+        gameDate,
+        hasPrediction,
+        finishedCount,
+        status,
+      }),
     };
   } catch (err) {
     console.error("getGameStatus error", err);
@@ -61,4 +64,3 @@ exports.handler = async (event) => {
     };
   }
 };
-
