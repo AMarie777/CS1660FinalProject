@@ -241,7 +241,7 @@ S3_BUCKET="emaillayer21"
 S3_KEY="email_layer1.zip"
 
 EMAIL_LAMBDA="email"
-EMAIL_ZIP="email_lambda.zip"
+EMAIL_ZIP="email.py.zip"
 HANDLER="lambda_function.lambda_handler"
 
 EVENT_RULE_NAME="market_open_30min"
