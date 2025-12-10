@@ -9,7 +9,7 @@ import {
   getModelMetadata,
 } from "../services/gameService";
 import ModelMetrics from "./ModelMetrics";
-import { PredictionComparison, FeatureImportance } from "./Charts";
+import { PredictionComparison, FeatureImportance, RecentOpens } from "./Charts";
 import "./Game.css";
 
 // Fallback if backend is unreachable
@@ -261,12 +261,12 @@ function Game() {
             </div>
           </div>
 
-          {/* Charts Section */}
+          {/* Charts Section - Visualizations */}
           <div className="charts-section-reveal">
             <h2 className="section-title">Visualizations</h2>
             
             {/* Prediction Comparison Chart */}
-            {botPrediction && (
+            {botPrediction && userGuess && (
               <div className="chart-wrapper">
                 <PredictionComparison
                   userGuess={userGuess}
@@ -280,6 +280,13 @@ function Game() {
             {modelMetadata?.featureImportance && modelMetadata.featureImportance.length > 0 && (
               <div className="chart-wrapper">
                 <FeatureImportance featureData={modelMetadata.featureImportance} />
+              </div>
+            )}
+
+            {/* Recent NVDA Opens Chart - Show if data is available */}
+            {gameStatus?.recentOpens && gameStatus.recentOpens.length > 0 && (
+              <div className="chart-wrapper">
+                <RecentOpens recentData={gameStatus.recentOpens} />
               </div>
             )}
           </div>

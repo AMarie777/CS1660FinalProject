@@ -542,6 +542,10 @@
   margin: 40px 0;
 }
 
+.charts-section-reveal .section-title {
+  margin-bottom: 30px;
+}
+
 .section-title {
   font-size: 24px;
   font-weight: 600;
