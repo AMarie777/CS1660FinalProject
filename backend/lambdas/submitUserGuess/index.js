@@ -68,8 +68,11 @@ exports.handler = async (event) => {
 
     console.log("Saving guess for email:", email, "guess:", guess);
 
-    // Save into DynamoDB (UserGuesses1)
-    await guessRepo.saveUserGuess(email, guess);
+    // Get today's date
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Save into DynamoDB (UserGuesses1) with game date
+    await guessRepo.saveUserGuess(email, guess, today);
 
     return {
       statusCode: 200,

@@ -31,7 +31,7 @@ exports.handler = async (event) => {
 
     const date = todayISO();
     const [guessRow, pred] = await Promise.all([
-      email ? getUserGuess(email) : null,
+      email ? getUserGuess(email, date) : null,
       getPredictionForDate(date),
     ]);
 
