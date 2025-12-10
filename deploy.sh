@@ -16,6 +16,25 @@ else
     echo "DynamoDB table NVDA_Predictions already exists."
 fi
 
+echo "Checking DynamoDB table UserGuesses1..."
+
+if ! aws dynamodb describe-table --table-name UserGuesses1 --region $REGION >/dev/null 2>&1; then
+  echo "Creating DynamoDB table UserGuesses1..."
+
+  aws dynamodb create-table \
+    --table-name UserGuesses1 \
+    --attribute-definitions AttributeName=id,AttributeType=S \
+    --key-schema AttributeName=id,KeyType=HASH \
+    --billing-mode PAY_PER_REQUEST \
+    --region $REGION
+
+  echo "Waiting for table to become ACTIVE..."
+  aws dynamodb wait table-exists --table-name UserGuesses1 --region $REGION
+
+else
+  echo "DynamoDB table UserGuesses1 already exists."
+fi
+
 echo "=== Create IAM Policy Ml_Automation ==="
 POLICY_ARN="arn:aws:iam::${ACCOUNT_ID}:policy/Ml_Automation"
 if ! aws iam get-policy --policy-arn $POLICY_ARN >/dev/null 2>&1; then
