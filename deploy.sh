@@ -266,7 +266,7 @@ if aws lambda get-function --function-name "$EMAIL_LAMBDA" >/dev/null 2>&1; then
     echo "Updating existing Lambda function $EMAIL_LAMBDA..."
     aws lambda update-function-code \
         --function-name "$EMAIL_LAMBDA" \
-        --zip-file fileb://email/email_lambda.zip
+        --zip-file fileb://email/email.py.zip
 
     aws lambda update-function-configuration \
         --function-name "$EMAIL_LAMBDA" \
