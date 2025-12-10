@@ -89,6 +89,12 @@ function Game() {
     e.preventDefault();
     setError(null);
 
+    // Prevent duplicate submissions
+    if (userGuess) {
+      setError("You have already submitted a prediction. Only one guess per game is allowed.");
+      return;
+    }
+
     const guessValue = Number(prediction);
     if (!Number.isFinite(guessValue) || guessValue <= 0) {
       setError("Please enter a valid positive number.");
@@ -102,15 +108,28 @@ function Game() {
       setSubmitResult(result);
       setPrediction("");
 
-      // Refresh game status
-      const newStatus = await getGameStatus();
-      setGameStatus(newStatus);
-
-      const updatedPoints = await getUserPoints();
-      setUserPoints(updatedPoints.points || 0);
+      // Refresh all game data after submission
+      await Promise.allSettled([
+        getGameStatus().then(status => {
+          setGameStatus(status);
+          if (status.userGuess !== null) {
+            setSubmitResult({ userGuess: status.userGuess });
+          }
+        }),
+        getUserPoints().then(points => {
+          setUserPoints(points.points || 0);
+        }),
+        getModelMetadata().then(metadata => {
+          setModelMetadata(metadata);
+        })
+      ]);
     } catch (err) {
       console.error("Submit error:", err);
-      setError("Failed to submit prediction.");
+      if (err.message?.includes("already") || err.message?.includes("duplicate")) {
+        setError("You have already submitted a prediction for this game. Only one guess per game is allowed.");
+      } else {
+        setError("Failed to submit prediction. Please try again.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -165,38 +184,69 @@ function Game() {
         </div>
       )}
 
-      {/* USER HAS SUBMITTED - Reveal model range and information */}
+      {/* USER HAS SUBMITTED - Full reveal of all information */}
       {userGuess && (
-        <>
-          {/* Locked Prediction Display */}
-          <div className="submit-result">
-            <h3>Your Prediction is Locked</h3>
-            <div className="locked-prediction-value">
-              ${Number(userGuess).toFixed(2)}
+        <div className="submitted-view">
+          {/* Comparison Section - User vs Model */}
+          <div className="comparison-section">
+            <h2 className="comparison-title">Your Prediction vs Model Prediction</h2>
+            <div className="predictions-comparison-grid">
+              <div className="prediction-card user-prediction">
+                <div className="prediction-label">Your Prediction</div>
+                <div className="prediction-value user-value">
+                  ${Number(userGuess).toFixed(2)}
+                </div>
+                <div className="prediction-status">Locked</div>
+              </div>
+              <div className="prediction-card model-prediction">
+                <div className="prediction-label">Model's Prediction</div>
+                <div className="prediction-value model-value">
+                  ${botPrediction.toFixed(2)}
+                </div>
+                <div className="prediction-status">Predicted Open</div>
+              </div>
             </div>
-            <p className="locked-message">
-              You cannot change your prediction now. The model's range will be revealed below.
-            </p>
           </div>
 
-          {/* REVEAL: Model Prediction Range (only shown after submission) */}
+          {/* Model Range Display */}
           <div className="bot-prediction reveal-section">
-            <h3>🤖 Model Prediction Range</h3>
+            <h3>Model Prediction Range</h3>
             <div className="model-range-display">
               <p className="range-message">
-                Model expects NVDA to open between{" "}
+                The model expects NVDA to open between{" "}
                 <strong className="range-low">${predictionRange.lower95.toFixed(2)}</strong> and{" "}
                 <strong className="range-high">${predictionRange.upper95.toFixed(2)}</strong>
               </p>
-              <p className="model-predicted-open">
-                Model's predicted open: <strong>${botPrediction.toFixed(2)}</strong>
-              </p>
             </div>
           </div>
 
-          {/* REVEAL: Model Metrics (Top 8 metrics + external links) */}
+          {/* Charts Section */}
+          <div className="charts-section-reveal">
+            <h2 className="section-title">Visualizations</h2>
+            
+            {/* Prediction Comparison Chart */}
+            {botPrediction && (
+              <div className="chart-wrapper">
+                <PredictionComparison
+                  userGuess={userGuess}
+                  botPrediction={botPrediction}
+                  actualOpen={actualOpen}
+                />
+              </div>
+            )}
+
+            {/* Feature Importance Chart */}
+            {modelMetadata?.featureImportance && modelMetadata.featureImportance.length > 0 && (
+              <div className="chart-wrapper">
+                <FeatureImportance featureData={modelMetadata.featureImportance} />
+              </div>
+            )}
+          </div>
+
+          {/* Model Metrics and Information */}
           {modelMetadata && (
             <div className="information-reveal">
+              <h2 className="section-title">Model Metrics & Data Sources</h2>
               <ModelMetrics
                 metrics={modelMetadata.topMetrics || {}}
                 featureImportance={modelMetadata.featureImportance || []}
@@ -204,28 +254,10 @@ function Game() {
             </div>
           )}
 
-          {/* REVEAL: Charts - Prediction Comparison */}
-          {botPrediction && (
-            <div className="charts-reveal">
-              <PredictionComparison
-                userGuess={userGuess}
-                botPrediction={botPrediction}
-                actualOpen={actualOpen}
-              />
-            </div>
-          )}
-
-          {/* REVEAL: Feature Importance Chart */}
-          {modelMetadata?.featureImportance && modelMetadata.featureImportance.length > 0 && (
-            <div className="feature-importance-reveal">
-              <FeatureImportance featureData={modelMetadata.featureImportance} />
-            </div>
-          )}
-
-          {/* RESULTS (if market has opened and actual price is available) */}
+          {/* Results (if market has opened) */}
           {actualOpen && (
             <div className="actual-results">
-              <h3>📊 Market Results</h3>
+              <h2 className="section-title">Market Results</h2>
               <div className="results-grid">
                 <div className="result-item">
                   <span className="result-label">Actual Opening Price:</span>
@@ -236,13 +268,13 @@ function Game() {
                   <span className="result-value">${Math.abs(userGuess - actualOpen).toFixed(2)}</span>
                 </div>
                 <div className="result-item">
-                  <span className="result-label">Bot Prediction Error:</span>
+                  <span className="result-label">Model Prediction Error:</span>
                   <span className="result-value">${Math.abs(botPrediction - actualOpen).toFixed(2)}</span>
                 </div>
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {error && <div className="error-message">{error}</div>}
