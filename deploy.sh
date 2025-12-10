@@ -338,16 +338,21 @@ echo "✅ Email Lambda and Layer deployed successfully!"
 
 echo "===  Add EventBridge Triggers to Lambda ==="
 # ML Lambda
+
+SID_EMAIL="email_perm_$(date +%s%N)"
+
 aws lambda add-permission \
     --function-name email \
-    --statement-id "email_event_permission" \
+    --statement-id "$SID_EMAIL" \
     --action 'lambda:InvokeFunction' \
     --principal events.amazonaws.com \
     --source-arn arn:aws:events:${REGION}:${ACCOUNT_ID}:rule/$RULE_NAME || true
     
+SID_ML="ml_perm_$(date +%s%N)"
+
 aws lambda add-permission \
     --function-name ml_lambda \
-    --statement-id ml_event_permission \
+    --statement-id "$SID_ML" \
     --action 'lambda:InvokeFunction' \
     --principal events.amazonaws.com \
     --source-arn arn:aws:events:${REGION}:${ACCOUNT_ID}:rule/market_close || true
@@ -355,11 +360,13 @@ aws lambda add-permission \
 aws events put-targets \
     --rule market_close \
     --targets "Id"="1","Arn"="arn:aws:lambda:${REGION}:${ACCOUNT_ID}:function:ml_lambda"
+    
+SID_DATA="data_perm_$(date +%s%N)"
 
 # Data Lambda
 aws lambda add-permission \
     --function-name data_lambda \
-    --statement-id data_event_permission \
+    --statement-id "$SID_DATA" \
     --action 'lambda:InvokeFunction' \
     --principal events.amazonaws.com \
     --source-arn arn:aws:events:${REGION}:${ACCOUNT_ID}:rule/market_close_before || true
