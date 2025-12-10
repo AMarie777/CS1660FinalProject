@@ -220,10 +220,90 @@ for FUNC in "${!BACKEND_LAMBDAS[@]}"; do
           --zip-file "fileb://$ZIP_FILE"
     fi
 done
+echo "===  SES Email Verification  ==="
+# ---------- SES Email Verification ----------
+SENDER_EMAIL="beatthebot317@gmail.com"
 
+# Check if email is verified
+VERIFIED=$(aws ses list-identities --identity-type EmailAddress --region $REGION | grep "$SENDER_EMAIL" || true)
+
+if [ -z "$VERIFIED" ]; then
+    echo "Verifying SES email: $SENDER_EMAIL"
+    aws ses verify-email-identity --email-address $SENDER_EMAIL --region $REGION
+else
+    echo "SES email $SENDER_EMAIL already verified"
+fi
+
+echo "=== Create/Update Email Lambda Layer  ==="
+
+# ---------- Create/Update Lambda Layer ----------
+LAYER_NAME="email_layer1"
+S3_BUCKET="emaillayer21"
+S3_KEY="email_layer1.zip"
+
+if ! aws lambda list-layers --region $REGION | grep "$LAYER_NAME" >/dev/null 2>&1; then
+    echo "Creating Lambda layer $LAYER_NAME..."
+    aws lambda publish-layer-version \
+        --layer-name $LAYER_NAME \
+        --content S3Bucket=$S3_BUCKET,S3Key=$S3_KEY \
+        --compatible-runtimes python3.13 \
+        --compatible-architectures arm64 \
+        --region $REGION
+else
+    echo "Updating Lambda layer $LAYER_NAME..."
+    aws lambda publish-layer-version \
+        --layer-name $LAYER_NAME \
+        --content S3Bucket=$S3_BUCKET,S3Key=$S3_KEY \
+        --compatible-runtimes python3.13 \
+        --compatible-architectures arm64 \
+        --region $REGION
+fi
+ echo "Creating Email Lambda"
+# ---------- Create/Update Email Lambda ----------
+EMAIL_LAMBDA="email"
+
+# Check if function exists
+if aws lambda get-function --function-name "$EMAIL_LAMBDA" >/dev/null 2>&1; then
+    echo "Updating Email Lambda $EMAIL_LAMBDA..."
+    aws lambda update-function-code \
+        --function-name "$EMAIL_LAMBDA" \
+        --zip-file fileb://email_lambda.zip
+else
+    echo "Creating Email Lambda $EMAIL_LAMBDA..."
+    aws lambda create-function \
+        --function-name "$EMAIL_LAMBDA" \
+        --runtime python3.13 \
+        --handler lambda_function.lambda_handler \
+        --role arn:aws:iam::${ACCOUNT_ID}:role/ml_lambda_role \
+        --timeout 120 \
+        --memory-size 256 \
+        --layers arn:aws:lambda:${REGION}:${ACCOUNT_ID}:layer:${LAYER_NAME} \
+        --zip-file fileb://email_lambda.zip
+fi
+
+echo "=== Create EventBridge Rule: 30 mins after market open ==="
+# Market opens at 9:30 AM EST → trigger at 10:00 AM EST → 15:00 UTC (standard time)
+RULE_NAME="market_open_30min"
+
+if ! aws events describe-rule --name $RULE_NAME --region $REGION >/dev/null 2>&1; then
+    aws events put-rule \
+        --name $RULE_NAME \
+        --schedule-expression "cron(0 15 * * ? *)" \
+        --description "Trigger Lambda 30 minutes after market open" \
+        --region $REGION
+else
+    echo "EventBridge rule $RULE_NAME already exists."
+fi
 
 echo "===  Add EventBridge Triggers to Lambda ==="
 # ML Lambda
+aws lambda add-permission \
+    --function-name email \
+    --statement-id "email_event_permission" \
+    --action 'lambda:InvokeFunction' \
+    --principal events.amazonaws.com \
+    --source-arn arn:aws:events:${REGION}:${ACCOUNT_ID}:rule/$RULE_NAME || true
+    
 aws lambda add-permission \
     --function-name ml_lambda \
     --statement-id ml_event_permission \
@@ -246,5 +326,9 @@ aws lambda add-permission \
 aws events put-targets \
     --rule market_close_before \
     --targets "Id"="1","Arn"="arn:aws:lambda:${REGION}:${ACCOUNT_ID}:function:data_lambda"
+
+aws events put-targets \
+    --rule market_open_30min \
+    --targets "Id"="1","Arn"="arn:aws:lambda:${REGION}:${ACCOUNT_ID}:function:email"
 
 echo " All resources created/updated successfully!"
