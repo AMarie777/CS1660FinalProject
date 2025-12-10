@@ -1,5 +1,5 @@
 const dynamo = require("./dynamoClient");
-const TABLE_NAME = process.env.USER_GUESSES_TABLE || "UserGuesses";
+const TABLE_NAME = process.env.USER_GUESSES_TABLE || "UserGuesses1";
 
 /**
  * guess = {

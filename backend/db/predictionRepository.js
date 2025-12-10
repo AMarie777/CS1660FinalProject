@@ -1,5 +1,5 @@
 const dynamo = require("./dynamoClient");
-const TABLE_NAME = process.env.PREDICTIONS_TABLE || "NVDA_Predictions";
+const TABLE_NAME = process.env.PREDICTIONS_TABLE || "NVDA_Predictions1";
 
 async function getPredictionForDate(predictionDate) {
   const res = await dynamo
