@@ -139,69 +139,108 @@ function Game() {
 
       <div className="game-date">Game Date: {current.gameDate}</div>
 
-      {/* USER HAS NOT GUESSED YET */}
+      {/* USER HAS NOT GUESSED YET - Show prediction form */}
       {!userGuess && status !== "CLOSED" && (
         <div className="prediction-section">
-          <h2 className="question">What will NVDA open at?</h2>
+          <h2 className="question">What will NVDA open at tomorrow?</h2>
+          <p className="instruction-text">
+            Enter your prediction for NVIDIA's opening price. Once you submit, your guess will be locked and you won't be able to change it.
+          </p>
 
           <form onSubmit={handleSubmit} className="prediction-form">
             <input
               type="number"
               step="0.01"
               className="prediction-input"
-              placeholder="Enter your guess"
+              placeholder="Enter your prediction (e.g., 145.50)"
               value={prediction}
               onChange={(e) => setPrediction(e.target.value)}
               disabled={submitting}
+              required
             />
             <button type="submit" className="submit-button" disabled={submitting}>
-              {submitting ? "Submitting..." : "Lock Prediction"}
+              {submitting ? "Locking..." : "Lock Prediction"}
             </button>
           </form>
         </div>
       )}
 
-      {/* USER HAS SUBMITTED */}
+      {/* USER HAS SUBMITTED - Reveal model range and information */}
       {userGuess && (
         <>
+          {/* Locked Prediction Display */}
           <div className="submit-result">
-            <h3>Your Prediction is Locked:</h3>
-            <p>${Number(userGuess).toFixed(2)}</p>
-          </div>
-
-          {/* Show model range */}
-          <div className="bot-prediction">
-            <h3>🤖 Model Prediction Range</h3>
-            <p>
-              Between <strong>${predictionRange.lower95.toFixed(2)}</strong> and{" "}
-              <strong>${predictionRange.upper95.toFixed(2)}</strong>
+            <h3>Your Prediction is Locked</h3>
+            <div className="locked-prediction-value">
+              ${Number(userGuess).toFixed(2)}
+            </div>
+            <p className="locked-message">
+              You cannot change your prediction now. The model's range will be revealed below.
             </p>
-            <p>Model predicted open: ${botPrediction.toFixed(2)}</p>
           </div>
 
-          {/* RESULTS (if market has opened) */}
-          {actualOpen && (
-            <div className="actual-results">
-              <h3>📊 Results</h3>
-              <div>Actual Open: ${actualOpen.toFixed(2)}</div>
-              <div>Your Error: ${Math.abs(userGuess - actualOpen).toFixed(2)}</div>
-              <div>
-                Bot Error: ${Math.abs(botPrediction - actualOpen).toFixed(2)}
-              </div>
+          {/* REVEAL: Model Prediction Range (only shown after submission) */}
+          <div className="bot-prediction reveal-section">
+            <h3>🤖 Model Prediction Range</h3>
+            <div className="model-range-display">
+              <p className="range-message">
+                Model expects NVDA to open between{" "}
+                <strong className="range-low">${predictionRange.lower95.toFixed(2)}</strong> and{" "}
+                <strong className="range-high">${predictionRange.upper95.toFixed(2)}</strong>
+              </p>
+              <p className="model-predicted-open">
+                Model's predicted open: <strong>${botPrediction.toFixed(2)}</strong>
+              </p>
+            </div>
+          </div>
+
+          {/* REVEAL: Model Metrics (Top 8 metrics + external links) */}
+          {modelMetadata && (
+            <div className="information-reveal">
+              <ModelMetrics
+                metrics={modelMetadata.topMetrics || {}}
+                featureImportance={modelMetadata.featureImportance || []}
+              />
             </div>
           )}
 
-          {/* Charts after submission */}
+          {/* REVEAL: Charts - Prediction Comparison */}
           {botPrediction && (
-            <PredictionComparison
-              userGuess={userGuess}
-              botPrediction={botPrediction}
-              actualOpen={actualOpen}
-            />
+            <div className="charts-reveal">
+              <PredictionComparison
+                userGuess={userGuess}
+                botPrediction={botPrediction}
+                actualOpen={actualOpen}
+              />
+            </div>
           )}
 
-          {modelMetadata?.featureImportance && (
-            <FeatureImportance featureData={modelMetadata.featureImportance} />
+          {/* REVEAL: Feature Importance Chart */}
+          {modelMetadata?.featureImportance && modelMetadata.featureImportance.length > 0 && (
+            <div className="feature-importance-reveal">
+              <FeatureImportance featureData={modelMetadata.featureImportance} />
+            </div>
+          )}
+
+          {/* RESULTS (if market has opened and actual price is available) */}
+          {actualOpen && (
+            <div className="actual-results">
+              <h3>📊 Market Results</h3>
+              <div className="results-grid">
+                <div className="result-item">
+                  <span className="result-label">Actual Opening Price:</span>
+                  <span className="result-value actual">${actualOpen.toFixed(2)}</span>
+                </div>
+                <div className="result-item">
+                  <span className="result-label">Your Prediction Error:</span>
+                  <span className="result-value">${Math.abs(userGuess - actualOpen).toFixed(2)}</span>
+                </div>
+                <div className="result-item">
+                  <span className="result-label">Bot Prediction Error:</span>
+                  <span className="result-value">${Math.abs(botPrediction - actualOpen).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
           )}
         </>
       )}
