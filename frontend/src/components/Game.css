@@ -372,6 +372,81 @@
   text-align: center;
 }
 
+.model-prediction-preview {
+  width: 100%;
+  background-color: #e8f5e9;
+  border: 2px solid #4caf50;
+  border-radius: 12px;
+  padding: 25px;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.model-preview-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 20px 0;
+}
+
+.model-preview-range-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.model-guess-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-guess-label {
+  font-size: 14px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+.model-guess-value {
+  font-size: 36px;
+  font-weight: bold;
+  padding: 15px 25px;
+  border-radius: 8px;
+  min-width: 140px;
+}
+
+.model-guess-value.range-low {
+  background-color: #d4edda;
+  color: #155724;
+  border: 2px solid #28a745;
+}
+
+.model-guess-value.range-high {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 2px solid #dc3545;
+}
+
+.model-guess-separator {
+  font-size: 18px;
+  font-weight: 600;
+  color: #666;
+  margin: 0 10px;
+}
+
+.model-preview-description {
+  font-size: 14px;
+  color: #666;
+  margin: 20px 0 0 0;
+  font-style: italic;
+}
+
 .submitted-view {
   width: 100%;
   display: flex;

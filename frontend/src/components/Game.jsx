@@ -90,7 +90,8 @@ function Game() {
     setError(null);
 
     // Prevent duplicate submissions
-    if (userGuess) {
+    const currentGuess = submitResult?.userGuess ?? gameStatus?.userGuess ?? null;
+    if (currentGuess) {
       setError("You have already submitted a prediction. Only one guess per game is allowed.");
       return;
     }
@@ -103,28 +104,45 @@ function Game() {
 
     try {
       setSubmitting(true);
+      
+      // Submit the guess
       const result = await submitUserGuess(guessValue);
-
-      setSubmitResult(result);
+      
+      // Immediately set the userGuess from the submitted value
+      // This ensures the UI updates right away
+      const submittedGuess = result.guess || result.userGuess || guessValue;
+      setSubmitResult({ userGuess: submittedGuess });
       setPrediction("");
 
       // Refresh all game data after submission
-      await Promise.allSettled([
-        getGameStatus().then(status => {
-          setGameStatus(status);
-          if (status.userGuess !== null) {
-            setSubmitResult({ userGuess: status.userGuess });
-          }
-        }),
-        getUserPoints().then(points => {
-          setUserPoints(points.points || 0);
-        }),
-        getModelMetadata().then(metadata => {
-          setModelMetadata(metadata);
-        })
+      const [statusRes, pointsRes, metadataRes] = await Promise.allSettled([
+        getGameStatus(),
+        getUserPoints(),
+        getModelMetadata()
       ]);
+
+      // Update game status
+      if (statusRes.status === "fulfilled" && statusRes.value) {
+        setGameStatus(statusRes.value);
+        // Ensure userGuess is set from status if available
+        if (statusRes.value.userGuess !== null && statusRes.value.userGuess !== undefined) {
+          setSubmitResult({ userGuess: statusRes.value.userGuess });
+        }
+      }
+
+      // Update points
+      if (pointsRes.status === "fulfilled" && pointsRes.value) {
+        setUserPoints(pointsRes.value.points || 0);
+      }
+
+      // Update model metadata
+      if (metadataRes.status === "fulfilled" && metadataRes.value) {
+        setModelMetadata(metadataRes.value);
+      }
     } catch (err) {
       console.error("Submit error:", err);
+      // Reset submitResult on error so user can try again
+      setSubmitResult(null);
       if (err.message?.includes("already") || err.message?.includes("duplicate")) {
         setError("You have already submitted a prediction for this game. Only one guess per game is allowed.");
       } else {
@@ -161,6 +179,29 @@ function Game() {
       {/* USER HAS NOT GUESSED YET - Show prediction form */}
       {!userGuess && status !== "CLOSED" && (
         <div className="prediction-section">
+          {/* Show Model Prediction BEFORE user guesses */}
+          <div className="model-prediction-preview">
+            <h3 className="model-preview-title">Model's Prediction Range</h3>
+            <div className="model-preview-range-display">
+              <div className="model-guess-item">
+                <div className="model-guess-label">Low Guess</div>
+                <div className="model-guess-value range-low">
+                  ${predictionRange.lower95.toFixed(2)}
+                </div>
+              </div>
+              <div className="model-guess-separator">to</div>
+              <div className="model-guess-item">
+                <div className="model-guess-label">High Guess</div>
+                <div className="model-guess-value range-high">
+                  ${predictionRange.upper95.toFixed(2)}
+                </div>
+              </div>
+            </div>
+            <p className="model-preview-description">
+              Model expects NVDA to open within this range
+            </p>
+          </div>
+
           <h2 className="question">What will NVDA open at tomorrow?</h2>
           <p className="instruction-text">
             Enter your prediction for NVIDIA's opening price. Once you submit, your guess will be locked and you won't be able to change it.
