@@ -332,7 +332,7 @@ aws events put-targets \
     --rule "$EVENT_RULE_NAME" \
     --targets "Id"="1","Arn"="arn:aws:lambda:${REGION}:${ACCOUNT_ID}:function:$EMAIL_LAMBDA"
 
-echo "✅ Email Lambda and Layer deployed successfully!"
+echo "Email Lambda and Layer deployed successfully!"
 
 
 
@@ -383,8 +383,6 @@ echo " All resources created/updated successfully!"
 
 
 
-
-
 echo "=== Get API Gateway URL for frontend ==="
 
 get_api_url() {
@@ -401,7 +399,7 @@ get_api_url() {
       --output text 2>/dev/null)
 
     if [ -n "$API_URL" ] && [ "$API_URL" != "None" ]; then
-      echo "✅ Found API URL in stack: $STACK"
+      echo "Found API URL in stack: $STACK"
       break
     fi
   done
@@ -415,12 +413,12 @@ get_api_url() {
 
     if [ -n "$API_ID" ]; then
       API_URL="https://${API_ID}.execute-api.${REGION}.amazonaws.com/prod"
-      echo "✅ Found API Gateway: $API_ID"
+      echo "Found API Gateway: $API_ID"
     fi
   fi
 
   if [ -z "$API_URL" ] || [ "$API_URL" == "None" ]; then
-    echo "❌ Could not find API Gateway URL for frontend"
+    echo "Could not find API Gateway URL for frontend"
     exit 1
   fi
 
@@ -429,46 +427,48 @@ get_api_url() {
 
 API_URL=$(get_api_url)
 echo "Using API URL: $API_URL"
-echo "=== Build frontend ==="
 
-cd frontend
-
+echo "=== Build frontend (CI sanity check) ==="
+pushd frontend
 export VITE_API_BASE_URL="$API_URL"
-
 npm ci || npm install
 npm run build
+popd
 
-cd ..
-echo "=== Deploy frontend to S3 / CloudFront ==="
+echo "=== Deploy frontend to S3 / CloudFront (only if infra stack exists) ==="
 
 INFRA_STACK="playing-the-market-infra"
 
-FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
-  --stack-name "$INFRA_STACK" \
-  --region "$REGION" \
-  --query "Stacks[0].Outputs[?OutputKey=='FrontendBucketName'].OutputValue" \
-  --output text)
+if aws cloudformation describe-stacks \
+     --stack-name "$INFRA_STACK" \
+     --region "$REGION" >/dev/null 2>&1; then
 
-if [ -z "$FRONTEND_BUCKET" ]; then
-  echo "❌ Could not find FrontendBucketName in $INFRA_STACK"
-  exit 1
+  echo "Found infra stack $INFRA_STACK – deploying to S3/CloudFront..."
+
+  FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
+    --stack-name "$INFRA_STACK" \
+    --region "$REGION" \
+    --query "Stacks[0].Outputs[?OutputKey=='FrontendBucketName'].OutputValue" \
+    --output text)
+
+  aws s3 sync frontend/dist "s3://$FRONTEND_BUCKET" --delete
+
+  DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+    --stack-name "$INFRA_STACK" \
+    --region "$REGION" \
+    --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" \
+    --output text)
+
+  if [ -n "$DISTRIBUTION_ID" ]; then
+    aws cloudfront create-invalidation \
+      --distribution-id "$DISTRIBUTION_ID" \
+      --paths "/*"
+  fi
+
+  echo "Frontend deployed via S3/CloudFront"
+
+else
+  echo "No infra stack '$INFRA_STACK' found – assuming Amplify is hosting the frontend. Skipping S3/CloudFront deploy."
 fi
 
-echo "Uploading to bucket: $FRONTEND_BUCKET"
-aws s3 sync frontend/dist "s3://$FRONTEND_BUCKET" --delete
-
-DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
-  --stack-name "$INFRA_STACK" \
-  --region "$REGION" \
-  --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" \
-  --output text)
-
-if [ -n "$DISTRIBUTION_ID" ]; then
-  aws cloudfront create-invalidation \
-    --distribution-id "$DISTRIBUTION_ID" \
-    --paths "/*"
-  echo "Cache invalidated."
-fi
-
-echo "✅ Frontend deployed successfully!"
-
+echo "Frontend step finished."
