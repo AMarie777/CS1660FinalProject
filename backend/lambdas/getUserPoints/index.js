@@ -17,8 +17,11 @@ function buildCors() {
 function getEmailFromAuth(event) {
   const h = event?.headers || {};
   const auth = h.Authorization || h.authorization;
-  if (!auth?.startsWith("Bearer ")) return null;
-  return auth.slice(7).trim();
+  if (!auth) return null;
+
+  // If it’s "Bearer token", strip the prefix. Otherwise, just use the raw value.
+  const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : auth.trim();
+  return token || null;
 }
 
 exports.handler = async (event) => {

@@ -1,7 +1,9 @@
+// backend/db/guessRepository.js
+
 const dynamo = require("./dynamoClient");
 const { PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 
-const TABLE_NAME = process.env.USER_GUESSES_TABLE;
+const TABLE_NAME = process.env.USER_GUESSES_TABLE || "UserGuesses1";
 
 async function saveUserGuess(email, guess) {
   const cmd = new PutCommand({
