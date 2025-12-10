@@ -234,66 +234,89 @@ else
     echo "SES email $SENDER_EMAIL already verified"
 fi
 
-echo "=== Create/Update Email Lambda Layer  ==="
-
-# ---------- Create/Update Lambda Layer ----------
+# --------------------- Variables ---------------------
 LAYER_NAME="email_layer1"
+LAYER_ZIP="email_layer1.zip"
 S3_BUCKET="emaillayer21"
 S3_KEY="email_layer1.zip"
 
-if ! aws lambda list-layers --region $REGION | grep "$LAYER_NAME" >/dev/null 2>&1; then
-    echo "Creating Lambda layer $LAYER_NAME..."
-    aws lambda publish-layer-version \
-        --layer-name $LAYER_NAME \
-        --content S3Bucket=$S3_BUCKET,S3Key=$S3_KEY \
-        --compatible-runtimes python3.13 \
-        --compatible-architectures arm64 \
-        --region $REGION
-else
-    echo "Updating Lambda layer $LAYER_NAME..."
-    aws lambda publish-layer-version \
-        --layer-name $LAYER_NAME \
-        --content S3Bucket=$S3_BUCKET,S3Key=$S3_KEY \
-        --compatible-runtimes python3.13 \
-        --compatible-architectures arm64 \
-        --region $REGION
-fi
- echo "Creating Email Lambda"
-# ---------- Create/Update Email Lambda ----------
 EMAIL_LAMBDA="email"
+EMAIL_ZIP="email_lambda.zip"
+HANDLER="lambda_function.lambda_handler"
 
-# Check if function exists
+EVENT_RULE_NAME="market_open_30min"
+EVENT_CRON="cron(0 15 * * ? *)"  # 10:00 AM EST = 15:00 UTC
+
+# --------------------- Upload Layer to S3 ---------------------
+echo "Uploading Lambda layer to S3..."
+aws s3 cp "$LAYER_ZIP" "s3://$S3_BUCKET/$S3_KEY" --region $REGION
+
+# --------------------- Publish Layer ---------------------
+echo "Publishing Lambda layer $LAYER_NAME..."
+LAYER_ARN=$(aws lambda publish-layer-version \
+    --layer-name "$LAYER_NAME" \
+    --content S3Bucket="$S3_BUCKET",S3Key="$S3_KEY" \
+    --compatible-runtimes python3.13 \
+    --compatible-architectures arm64 \
+    --region $REGION \
+    --query 'LayerVersionArn' \
+    --output text)
+
+echo "Layer published with ARN: $LAYER_ARN"
+
+# --------------------- Create/Update Lambda Function ---------------------
 if aws lambda get-function --function-name "$EMAIL_LAMBDA" >/dev/null 2>&1; then
-    echo "Updating Email Lambda $EMAIL_LAMBDA..."
+    echo "Updating existing Lambda function $EMAIL_LAMBDA..."
     aws lambda update-function-code \
         --function-name "$EMAIL_LAMBDA" \
-        --zip-file fileb://email_lambda.zip
+        --zip-file fileb://email/email_lambda.zip
+
+    aws lambda update-function-configuration \
+        --function-name "$EMAIL_LAMBDA" \
+        --layers "$LAYER_ARN" \
+        --timeout 120 \
+        --memory-size 256
 else
-    echo "Creating Email Lambda $EMAIL_LAMBDA..."
+    echo "Creating Lambda function $EMAIL_LAMBDA..."
     aws lambda create-function \
         --function-name "$EMAIL_LAMBDA" \
         --runtime python3.13 \
-        --handler lambda_function.lambda_handler \
+        --handler "$HANDLER" \
         --role arn:aws:iam::${ACCOUNT_ID}:role/ml_lambda_role \
         --timeout 120 \
         --memory-size 256 \
-        --layers arn:aws:lambda:${REGION}:${ACCOUNT_ID}:layer:${LAYER_NAME} \
-        --zip-file fileb://email_lambda.zip
+        --layers "$LAYER_ARN" \
+        --zip-file fileb://email/email_lambda.zip
 fi
 
-echo "=== Create EventBridge Rule: 30 mins after market open ==="
-# Market opens at 9:30 AM EST → trigger at 10:00 AM EST → 15:00 UTC (standard time)
-RULE_NAME="market_open_30min"
-
-if ! aws events describe-rule --name $RULE_NAME --region $REGION >/dev/null 2>&1; then
+# --------------------- Create EventBridge Rule ---------------------
+if ! aws events describe-rule --name "$EVENT_RULE_NAME" --region $REGION >/dev/null 2>&1; then
+    echo "Creating EventBridge rule $EVENT_RULE_NAME..."
     aws events put-rule \
-        --name $RULE_NAME \
-        --schedule-expression "cron(0 15 * * ? *)" \
+        --name "$EVENT_RULE_NAME" \
+        --schedule-expression "$EVENT_CRON" \
         --description "Trigger Lambda 30 minutes after market open" \
         --region $REGION
 else
-    echo "EventBridge rule $RULE_NAME already exists."
+    echo "EventBridge rule $EVENT_RULE_NAME already exists"
 fi
+
+# --------------------- Add Lambda Permission ---------------------
+aws lambda add-permission \
+    --function-name "$EMAIL_LAMBDA" \
+    --statement-id "${EMAIL_LAMBDA}_event_permission" \
+    --action 'lambda:InvokeFunction' \
+    --principal events.amazonaws.com \
+    --source-arn arn:aws:events:${REGION}:${ACCOUNT_ID}:rule/$EVENT_RULE_NAME || true
+
+# --------------------- Attach Lambda to EventBridge ---------------------
+aws events put-targets \
+    --rule "$EVENT_RULE_NAME" \
+    --targets "Id"="1","Arn"="arn:aws:lambda:${REGION}:${ACCOUNT_ID}:function:$EMAIL_LAMBDA"
+
+echo "✅ Email Lambda and Layer deployed successfully!"
+
+
 
 echo "===  Add EventBridge Triggers to Lambda ==="
 # ML Lambda
