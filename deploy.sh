@@ -26,7 +26,7 @@ if ! aws dynamodb describe-table --table-name UserGuesses1 --region $REGION >/de
     --attribute-definitions AttributeName=email,AttributeType=S \
     --key-schema AttributeName=email,KeyType=HASH \
     --billing-mode PAY_PER_REQUEST \
-    --region $REGIO
+    --region $REGION
 
   echo "Waiting for table to become ACTIVE..."
   aws dynamodb wait table-exists --table-name UserGuesses1 --region $REGION
