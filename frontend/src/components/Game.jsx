@@ -263,7 +263,6 @@ function Game() {
 
           {/* Charts Section - Visualizations */}
           <div className="charts-section-reveal">
-            <h2 className="section-title">Visualizations</h2>
             
             {/* Prediction Comparison Chart */}
             {botPrediction && userGuess && (
