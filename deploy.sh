@@ -74,6 +74,7 @@ fi
 
 echo "=== Create IAM Role ml_lambda_role ==="
 ROLE_NAME="ml_lambda_role"
+
 if ! aws iam get-role --role-name $ROLE_NAME >/dev/null 2>&1; then
     cat > ml_lambda_trust.json << EOL
 {
@@ -89,17 +90,24 @@ if ! aws iam get-role --role-name $ROLE_NAME >/dev/null 2>&1; then
     ]
 }
 EOL
+
     aws iam create-role \
         --role-name $ROLE_NAME \
         --assume-role-policy-document file://ml_lambda_trust.json
 
+    # Attach required policies
     aws iam attach-role-policy \
         --role-name $ROLE_NAME \
-        --policy-arn $POLICY_ARN
+        --policy-arn arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
 
     aws iam attach-role-policy \
         --role-name $ROLE_NAME \
-        --policy-arn arn:aws:iam::aws:policy/AWSLambdaBasicExecutionRole
+        --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+    aws iam attach-role-policy \
+        --role-name $ROLE_NAME \
+        --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
 else
     echo "IAM Role ml_lambda_role already exists."
 fi
